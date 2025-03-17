@@ -23,14 +23,22 @@ public abstract class LivingEntityPatchMixin<T extends LivingEntity> extends Hur
     @Shadow protected Armature armature;
 
     @Inject(method = "getArmature", at = @At("HEAD"), cancellable = true)
-    private void efhm$getArmature(CallbackInfoReturnable<Armature> cir){
+    private void efmm$getArmature(CallbackInfoReturnable<Armature> cir){
         if(EFMMArmatures.hasArmature(this.getOriginal())){
             cir.setReturnValue(EFMMArmatures.getArmatureFor(this.getOriginal()));
         }
     }
 
+    @Inject(method = "getModelMatrix", at = @At("RETURN"), cancellable = true)
+    private void efmm$getModelMatrix(float partialTicks, CallbackInfoReturnable<OpenMatrix4f> cir){
+        if(EFMMArmatures.hasArmature(this.getOriginal())){
+            Vec3f scale = EFMMArmatures.getScaleFor(this.getOriginal());
+            cir.setReturnValue(cir.getReturnValue().scale(scale.x, scale.y, scale.z));
+        }
+    }
+
     @Inject(method = "poseTick", at = @At("HEAD"), cancellable = true)
-    private void efhm$getArmature(DynamicAnimation animation, Pose pose, float elapsedTime, float partialTicks, CallbackInfo ci){
+    private void efmm$getArmature(DynamicAnimation animation, Pose pose, float elapsedTime, float partialTicks, CallbackInfo ci){
         if(EFMMArmatures.hasArmature(this.getOriginal())){
             if (pose.getJointTransformData().containsKey("Head") && animation.doesHeadRotFollowEntityHead()) {
                 Armature customArmature = EFMMArmatures.getArmatureFor(this.getOriginal());

@@ -16,7 +16,7 @@ public abstract class PlayerPatchMixin<T extends Player> extends LivingEntityPat
 
     @Inject(method = "getModelMatrix", at = @At("RETURN"), remap = false, cancellable = true)
     private void efhm$getModelMatrix(float partialTicks, CallbackInfoReturnable<OpenMatrix4f> cir){
-        if(EFMMArmatures.hasArmature(this.original)){
+        if(EFMMArmatures.hasArmature(this.original) && !this.original.isSpectator()){
             Vec3f scale = EFMMArmatures.getScaleFor(this.getOriginal());
             cir.setReturnValue(cir.getReturnValue().scale(scale.x, scale.y, scale.z));
         }

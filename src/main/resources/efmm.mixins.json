@@ -10,7 +10,8 @@
   ],
   "client": [
     "AbstractClientPlayerPatchMixin",
-    "PlayerRendererMixin",
+    "PatchedEntityRendererMixin",
+    "LivingEntityRendererMixin",
     "PPlayerRendererMixin"
   ],
   "injectors": {

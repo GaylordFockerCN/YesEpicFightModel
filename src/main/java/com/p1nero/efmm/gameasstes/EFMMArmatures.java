@@ -19,6 +19,8 @@ import yesman.epicfight.api.utils.math.Vec3f;
 import yesman.epicfight.gameasset.Armatures;
 import yesman.epicfight.model.armature.HumanoidArmature;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import static yesman.epicfight.gameasset.Armatures.wrapLocation;
@@ -29,7 +31,7 @@ public class EFMMArmatures {
 
     public static final BiMap<ResourceLocation, ModelConfig> MODEL_CONFIGS = HashBiMap.create();
     public static final BiMap<ResourceLocation, Armature> ARMATURES = HashBiMap.create();
-    public static final BiMap<UUID, ResourceLocation> ARMATURE_LOCATION_MAP = HashBiMap.create();
+    public static final Map<UUID, ResourceLocation> ARMATURE_LOCATION_MAP = new HashMap<>();
 
     @SubscribeEvent
     public static void build(ModelBuildEvent.ArmatureBuild event) {

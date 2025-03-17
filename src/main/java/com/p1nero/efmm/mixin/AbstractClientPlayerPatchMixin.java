@@ -14,8 +14,8 @@ import yesman.epicfight.world.capabilities.entitypatch.LivingEntityPatch;
 @Mixin(value = AbstractClientPlayerPatch.class, remap = false)
 public abstract class AbstractClientPlayerPatchMixin<T extends Player> extends LivingEntityPatch<T> {
     @Inject(method = "getModelMatrix", at = @At("RETURN"), remap = false, cancellable = true)
-    private void efhm$getModelMatrix(float partialTicks, CallbackInfoReturnable<OpenMatrix4f> cir){
-        if(EFMMArmatures.hasArmature(this.getOriginal())){
+    private void efmm$getModelMatrix(float partialTicks, CallbackInfoReturnable<OpenMatrix4f> cir){
+        if(EFMMArmatures.hasArmature(this.getOriginal()) && !this.getOriginal().isSpectator()){
             Vec3f scale = EFMMArmatures.getScaleFor(this.getOriginal());
             cir.setReturnValue(cir.getReturnValue().scale(scale.x, scale.y, scale.z));
         }

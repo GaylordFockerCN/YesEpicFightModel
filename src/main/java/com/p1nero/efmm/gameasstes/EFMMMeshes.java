@@ -16,13 +16,14 @@ import yesman.epicfight.api.client.model.Meshes;
 import yesman.epicfight.api.forgeevent.ModelBuildEvent;
 import yesman.epicfight.client.mesh.HumanoidMesh;
 
+import java.util.HashMap;
 import java.util.UUID;
 
 @Mod.EventBusSubscriber(modid = EpicFightMeshModelMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class EFMMMeshes {
 
     public static final BiMap<ResourceLocation, AnimatedMesh> MESHES = HashBiMap.create();
-    public static final BiMap<UUID, ResourceLocation> MESH_LOCATION_MAP = HashBiMap.create();
+    public static final HashMap<UUID, ResourceLocation> MESH_LOCATION_MAP = new HashMap<>();
 
     @SubscribeEvent
     public static void build(ModelBuildEvent.MeshBuild event) {

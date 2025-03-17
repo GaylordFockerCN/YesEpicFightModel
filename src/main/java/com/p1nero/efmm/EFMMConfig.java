@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 @Mod.EventBusSubscriber(modid = EpicFightMeshModelMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class EFMMConfig {
     private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
-    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> MODELS_STRINGS = BUILDER.comment("需要加载的模型列表（用逗号隔开）", "Models that should be loaded").defineListAllowEmpty("items", List.of("efmm:entity/anon"), (s) -> true);
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> MODELS_STRINGS = BUILDER.comment("需要加载的模型列表（用逗号隔开）", "Models that should be loaded").defineListAllowEmpty("items", List.of("efmm:entity/anon"), (s) -> true);
     static final ForgeConfigSpec SPEC = BUILDER.build();
     public static Set<ResourceLocation> MODELS;
 
