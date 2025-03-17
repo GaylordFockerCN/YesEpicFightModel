@@ -27,11 +27,19 @@ public class EFMMMeshes {
 
     @SubscribeEvent
     public static void build(ModelBuildEvent.MeshBuild event) {
+        loadMeshes();
+    }
+
+    public static void loadMeshes(){
         for (ResourceLocation resourceLocation : EFMMConfig.MODELS) {
             getOrCreateAnimatedMesh(resourceLocation, HumanoidMesh::new);
             EpicFightMeshModelMod.LOGGER.info("LOAD ADDITIONAL EPIC FIGHT MESH >> {}", resourceLocation.toString());
         }
+    }
 
+    public static void reloadMeshes(){
+        MESHES.clear();
+        loadMeshes();
     }
 
     public static void bindMesh(Entity entity, String resourceLocation){

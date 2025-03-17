@@ -2,6 +2,7 @@ package com.p1nero.efmm.network;
 
 import com.p1nero.efmm.EpicFightMeshModelMod;
 import com.p1nero.efmm.network.packet.BasePacket;
+import com.p1nero.efmm.network.packet.ReloadModelsPacket;
 import com.p1nero.efmm.network.packet.ResetArmaturePacket;
 import com.p1nero.efmm.network.packet.SyncArmaturePacket;
 import net.minecraft.network.FriendlyByteBuf;
@@ -23,6 +24,7 @@ public class PacketHandler {
     public static  void register() {
         register(SyncArmaturePacket.class, SyncArmaturePacket::decode);
         register(ResetArmaturePacket.class, ResetArmaturePacket::decode);
+        register(ReloadModelsPacket.class, ReloadModelsPacket::decode);
     }
 
     private static <MSG extends BasePacket> void register(final Class<MSG> packet, Function<FriendlyByteBuf, MSG> decoder) {

@@ -2,7 +2,6 @@ package com.p1nero.efmm.mixin;
 
 import com.p1nero.efmm.gameasstes.EFMMArmatures;
 import net.minecraft.client.model.EntityModel;
-import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
@@ -15,6 +14,9 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import yesman.epicfight.config.ConfigManager;
+import yesman.epicfight.world.capabilities.EpicFightCapabilities;
+import yesman.epicfight.world.capabilities.entitypatch.player.PlayerPatch;
 
 @Mixin(value = LivingEntityRenderer.class)
 public abstract class LivingEntityRendererMixin<T extends LivingEntity, M extends EntityModel<T>> extends EntityRenderer<T> implements RenderLayerParent<T, M> {
@@ -27,6 +29,13 @@ public abstract class LivingEntityRendererMixin<T extends LivingEntity, M extend
     @Inject(method = "getRenderType", at = @At("HEAD"), cancellable = true)
     private void efmm$replaceTexture(T livingEntity, boolean p_115323_, boolean p_115324_, boolean p_115325_, CallbackInfoReturnable<RenderType> cir){
         if(EFMMArmatures.hasArmature(livingEntity) && !livingEntity.isSpectator()){
+            PlayerPatch<?> playerPatch = EpicFightCapabilities.getEntityPatch(livingEntity, PlayerPatch.class);
+            if(playerPatch != null){
+                if((ConfigManager.INGAME_CONFIG.filterAnimation.get() && !playerPatch.isBattleMode())){
+                    return;
+                }
+            }
+
             ResourceLocation resourcelocation = this.getTextureLocation(livingEntity);
 
             if(EFMMArmatures.hasArmature(livingEntity)){

@@ -35,11 +35,21 @@ public class EFMMArmatures {
 
     @SubscribeEvent
     public static void build(ModelBuildEvent.ArmatureBuild event) {
+        loadArmatures();
+    }
+
+    public static void loadArmatures(){
         for(ResourceLocation resourceLocation : EFMMConfig.MODELS){
             getOrCreateArmature(resourceLocation);
             getOrCreateModelConfig(resourceLocation);
             EpicFightMeshModelMod.LOGGER.info("LOAD ADDITIONAL EPIC FIGHT ARMATURE >> {}", resourceLocation.toString());
         }
+    }
+
+    public static void reloadArmatures(){
+        ARMATURES.clear();
+        MODEL_CONFIGS.clear();
+        loadArmatures();
     }
 
     public static void bindArmature(Entity entity, String resourceLocation){

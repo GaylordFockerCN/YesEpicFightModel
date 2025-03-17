@@ -6,6 +6,7 @@ import com.p1nero.efmm.EFMMConfig;
 import com.p1nero.efmm.gameasstes.EFMMArmatures;
 import com.p1nero.efmm.network.PacketHandler;
 import com.p1nero.efmm.network.PacketRelay;
+import com.p1nero.efmm.network.packet.ReloadModelsPacket;
 import com.p1nero.efmm.network.packet.ResetArmaturePacket;
 import com.p1nero.efmm.network.packet.SyncArmaturePacket;
 import net.minecraft.commands.CommandSourceStack;
@@ -18,6 +19,13 @@ import net.minecraft.world.entity.Entity;
 
 public class EFMMCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        dispatcher.register(Commands.literal("reloadMeshModels").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
+                .executes((context) -> {
+                    EFMMArmatures.reloadArmatures();
+                    PacketRelay.sendToAll(PacketHandler.INSTANCE, new ReloadModelsPacket());
+                    return 0;
+                })
+        );
         dispatcher.register(Commands.literal("bindMeshForSelf")
                 .then(Commands.argument("resource_location", StringArgumentType.string())
                         .suggests(((commandContext, suggestionsBuilder) -> {
