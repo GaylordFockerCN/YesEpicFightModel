@@ -1,5 +1,6 @@
 package com.p1nero.efmm.mixin;
 
+import com.p1nero.efmm.efmodel.ServerModelManager;
 import com.p1nero.efmm.gameasstes.EFMMArmatures;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,8 +17,8 @@ public abstract class PlayerPatchMixin<T extends Player> extends LivingEntityPat
 
     @Inject(method = "getModelMatrix", at = @At("RETURN"), remap = false, cancellable = true)
     private void efhm$getModelMatrix(float partialTicks, CallbackInfoReturnable<OpenMatrix4f> cir){
-        if(EFMMArmatures.hasArmature(this.original) && !this.original.isSpectator()){
-            Vec3f scale = EFMMArmatures.getScaleFor(this.getOriginal());
+        if(ServerModelManager.hasArmature(this.original) && !this.original.isSpectator()){
+            Vec3f scale = ServerModelManager.getScaleFor(this.getOriginal());
             cir.setReturnValue(cir.getReturnValue().scale(scale.x, scale.y, scale.z));
         }
     }

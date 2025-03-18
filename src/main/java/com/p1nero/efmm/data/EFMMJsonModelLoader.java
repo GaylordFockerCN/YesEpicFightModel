@@ -1,15 +1,13 @@
 package com.p1nero.efmm.data;
 
-import java.io.BufferedInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+
 import com.google.common.collect.Maps;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -17,20 +15,18 @@ import com.google.gson.JsonObject;
 import com.google.gson.internal.Streams;
 import com.google.gson.stream.JsonReader;
 
-import com.p1nero.efmm.EpicFightMeshModelMod;
+import com.mojang.logging.LogUtils;
 import io.netty.util.internal.StringUtil;
-import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.ModList;
+import org.slf4j.Logger;
 import yesman.epicfight.api.animation.Joint;
 import yesman.epicfight.api.client.model.AnimatedMesh;
 import yesman.epicfight.api.client.model.AnimatedMesh.AnimatedModelPart;
 import yesman.epicfight.api.client.model.AnimatedVertexBuilder;
 import yesman.epicfight.api.client.model.MeshPartDefinition;
-import yesman.epicfight.api.client.model.Meshes;
 import yesman.epicfight.api.client.model.Meshes.MeshContructor;
 import yesman.epicfight.api.client.model.RawMesh;
 import yesman.epicfight.api.client.model.RawMesh.RawModelPart;
@@ -46,14 +42,12 @@ import yesman.epicfight.gameasset.Armatures.ArmatureContructor;
 public class EFMMJsonModelLoader {
     public static final OpenMatrix4f BLENDER_TO_MINECRAFT_COORD = OpenMatrix4f.createRotatorDeg(-90.0F, Vec3f.X_AXIS);
     private final JsonObject rootJson;
-    private final ResourceManager resourceManager;
-    private final ResourceLocation resourceLocation;
     private final String fileHash;
+    private String name = "";
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     public EFMMJsonModelLoader(ResourceLocation resourceLocation) throws IllegalStateException {
         JsonReader jsonReader;
-        this.resourceManager = null;
-        this.resourceLocation = resourceLocation;
 
         // In this case, reads the animation data from mod.jar (Especially in a server)
         Class<?> modClass = ModList.get().getModObjectById(resourceLocation.getNamespace()).get().getClass();
@@ -73,7 +67,21 @@ public class EFMMJsonModelLoader {
         try {
             jsonReader.close();
         } catch (IOException e) {
-            EpicFightMeshModelMod.LOGGER.info("failed to close jsonReader", e);
+            LOGGER.info("Failed to close jsonReader", e);
+        }
+        this.fileHash = getSHA256Hash(this.rootJson.toString());
+    }
+
+    public EFMMJsonModelLoader(File file) throws IllegalStateException, FileNotFoundException {
+        this.name = file.getName();
+        JsonReader jsonReader = new JsonReader(new FileReader(file));
+        jsonReader.setLenient(true);
+        this.rootJson = Streams.parse(jsonReader).getAsJsonObject();
+
+        try {
+            jsonReader.close();
+        } catch (IOException e) {
+            LOGGER.info("Failed to close jsonReader", e);
         }
         this.fileHash = getSHA256Hash(this.rootJson.toString());
     }
@@ -84,16 +92,16 @@ public class EFMMJsonModelLoader {
         try {
             MessageDigest sh = MessageDigest.getInstance("SHA-256");
             sh.update(str.getBytes());
-            byte byteData[] = sh.digest();
-            StringBuffer sb = new StringBuffer();
+            byte[] byteData = sh.digest();
+            StringBuilder sb = new StringBuilder();
 
-            for (int i = 0; i < byteData.length; i++) {
-                sb.append(Integer.toString((byteData[i] & 0xFF) + 0x100, 16).substring(1));
+            for (byte byteDatum : byteData) {
+                sb.append(Integer.toString((byteDatum & 0xFF) + 0x100, 16).substring(1));
             }
 
             hashStream = sb.toString();
         } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
+            LOGGER.error("Error when getSHA256Hash", e);
             hashStream = null;
         }
 
@@ -101,24 +109,18 @@ public class EFMMJsonModelLoader {
     }
 
     @OnlyIn(Dist.CLIENT)
-    public EFMMJsonModelLoader(InputStream inputstream, ResourceLocation resourceLocation) throws IOException {
-        JsonReader jsonReader = null;
-        this.resourceManager = Minecraft.getInstance().getResourceManager();
-        this.resourceLocation = resourceLocation;
-
+    public EFMMJsonModelLoader(InputStream inputstream) throws IOException {
+        JsonReader jsonReader;
         jsonReader = new JsonReader(new InputStreamReader(inputstream, StandardCharsets.UTF_8));
         jsonReader.setLenient(true);
         this.rootJson = Streams.parse(jsonReader).getAsJsonObject();
         jsonReader.close();
-
         this.fileHash = StringUtil.EMPTY_STRING;
     }
 
     @OnlyIn(Dist.CLIENT)
-    public EFMMJsonModelLoader(JsonObject rootJson, ResourceLocation rl) {
-        this.resourceManager = Minecraft.getInstance().getResourceManager();
+    public EFMMJsonModelLoader(JsonObject rootJson) {
         this.rootJson = rootJson;
-        this.resourceLocation = rl;
         this.fileHash = StringUtil.EMPTY_STRING;
     }
 
@@ -159,133 +161,120 @@ public class EFMMJsonModelLoader {
 
     @OnlyIn(Dist.CLIENT)
     public <T extends RawMesh> T loadMesh(MeshContructor<RawModelPart, VertexBuilder, T> constructor) {
-        ResourceLocation parent = this.getParent();
+        JsonObject obj = this.rootJson.getAsJsonObject("vertices");
+        JsonObject positions = obj.getAsJsonObject("positions");
+        JsonObject normals = obj.getAsJsonObject("normals");
+        JsonObject uvs = obj.getAsJsonObject("uvs");
+        JsonObject parts = obj.getAsJsonObject("parts");
+        JsonObject indices = obj.getAsJsonObject("indices");
 
-        if (parent != null) {
-            T mesh = Meshes.getOrCreateRawMesh(this.resourceManager, parent, constructor);
-            return constructor.invoke(null, null, mesh, this.getRenderProperties());
-        } else {
-            JsonObject obj = this.rootJson.getAsJsonObject("vertices");
-            JsonObject positions = obj.getAsJsonObject("positions");
-            JsonObject normals = obj.getAsJsonObject("normals");
-            JsonObject uvs = obj.getAsJsonObject("uvs");
-            JsonObject parts = obj.getAsJsonObject("parts");
-            JsonObject indices = obj.getAsJsonObject("indices");
+        float[] positionArray = ParseUtil.toFloatArray(positions.get("array").getAsJsonArray());
 
-            float[] positionArray = ParseUtil.toFloatArray(positions.get("array").getAsJsonArray());
-
-            for (int i = 0; i < positionArray.length / 3; i++) {
-                int k = i * 3;
-                Vec4f posVector = new Vec4f(positionArray[k], positionArray[k+1], positionArray[k+2], 1.0F);
-                OpenMatrix4f.transform(BLENDER_TO_MINECRAFT_COORD, posVector, posVector);
-                positionArray[k] = posVector.x;
-                positionArray[k+1] = posVector.y;
-                positionArray[k+2] = posVector.z;
-            }
-
-            float[] normalArray = ParseUtil.toFloatArray(normals.get("array").getAsJsonArray());
-
-            for (int i = 0; i < normalArray.length / 3; i++) {
-                int k = i * 3;
-                Vec4f normVector = new Vec4f(normalArray[k], normalArray[k+1], normalArray[k+2], 1.0F);
-                OpenMatrix4f.transform(BLENDER_TO_MINECRAFT_COORD, normVector, normVector);
-                normalArray[k] = normVector.x;
-                normalArray[k+1] = normVector.y;
-                normalArray[k+2] = normVector.z;
-            }
-
-            float[] uvArray = ParseUtil.toFloatArray(uvs.get("array").getAsJsonArray());
-
-            Map<String, float[]> arrayMap = Maps.newHashMap();
-            Map<MeshPartDefinition, List<VertexBuilder>> meshMap = Maps.newHashMap();
-
-            arrayMap.put("positions", positionArray);
-            arrayMap.put("normals", normalArray);
-            arrayMap.put("uvs", uvArray);
-
-            if (parts != null) {
-                for (Map.Entry<String, JsonElement> e : parts.entrySet()) {
-                    meshMap.put(VanillaMeshPartDefinition.of(e.getKey()), VertexBuilder.createVertexIndicator(ParseUtil.toIntArray(e.getValue().getAsJsonObject().get("array").getAsJsonArray())));
-                }
-            }
-
-            if (indices != null) {
-                meshMap.put(VanillaMeshPartDefinition.of("noGroups"), VertexBuilder.createVertexIndicator(ParseUtil.toIntArray(indices.get("array").getAsJsonArray())));
-            }
-
-            return constructor.invoke(arrayMap, meshMap, null, this.getRenderProperties());
+        for (int i = 0; i < positionArray.length / 3; i++) {
+            int k = i * 3;
+            Vec4f posVector = new Vec4f(positionArray[k], positionArray[k+1], positionArray[k+2], 1.0F);
+            OpenMatrix4f.transform(BLENDER_TO_MINECRAFT_COORD, posVector, posVector);
+            positionArray[k] = posVector.x;
+            positionArray[k+1] = posVector.y;
+            positionArray[k+2] = posVector.z;
         }
+
+        float[] normalArray = ParseUtil.toFloatArray(normals.get("array").getAsJsonArray());
+
+        for (int i = 0; i < normalArray.length / 3; i++) {
+            int k = i * 3;
+            Vec4f normVector = new Vec4f(normalArray[k], normalArray[k+1], normalArray[k+2], 1.0F);
+            OpenMatrix4f.transform(BLENDER_TO_MINECRAFT_COORD, normVector, normVector);
+            normalArray[k] = normVector.x;
+            normalArray[k+1] = normVector.y;
+            normalArray[k+2] = normVector.z;
+        }
+
+        float[] uvArray = ParseUtil.toFloatArray(uvs.get("array").getAsJsonArray());
+
+        Map<String, float[]> arrayMap = Maps.newHashMap();
+        Map<MeshPartDefinition, List<VertexBuilder>> meshMap = Maps.newHashMap();
+
+        arrayMap.put("positions", positionArray);
+        arrayMap.put("normals", normalArray);
+        arrayMap.put("uvs", uvArray);
+
+        if (parts != null) {
+            for (Map.Entry<String, JsonElement> e : parts.entrySet()) {
+                meshMap.put(VanillaMeshPartDefinition.of(e.getKey()), VertexBuilder.createVertexIndicator(ParseUtil.toIntArray(e.getValue().getAsJsonObject().get("array").getAsJsonArray())));
+            }
+        }
+
+        if (indices != null) {
+            meshMap.put(VanillaMeshPartDefinition.of("noGroups"), VertexBuilder.createVertexIndicator(ParseUtil.toIntArray(indices.get("array").getAsJsonArray())));
+        }
+
+        return constructor.invoke(arrayMap, meshMap, null, this.getRenderProperties());
     }
 
     @OnlyIn(Dist.CLIENT)
     public <T extends AnimatedMesh> T loadAnimatedMesh(MeshContructor<AnimatedModelPart, AnimatedVertexBuilder, T> constructor) {
         ResourceLocation parent = this.getParent();
+        JsonObject obj = this.rootJson.getAsJsonObject("vertices");
+        JsonObject positions = obj.getAsJsonObject("positions");
+        JsonObject normals = obj.getAsJsonObject("normals");
+        JsonObject uvs = obj.getAsJsonObject("uvs");
+        JsonObject vdincies = obj.getAsJsonObject("vindices");
+        JsonObject weights = obj.getAsJsonObject("weights");
+        JsonObject vcounts = obj.getAsJsonObject("vcounts");
+        JsonObject parts = obj.getAsJsonObject("parts");
+        JsonObject indices = obj.getAsJsonObject("indices");
 
-        if (parent != null) {
-            T mesh = Meshes.getOrCreateAnimatedMesh(this.resourceManager, parent, constructor);
-            return constructor.invoke(null, null, mesh, this.getRenderProperties());
-        } else {
-            JsonObject obj = this.rootJson.getAsJsonObject("vertices");
-            JsonObject positions = obj.getAsJsonObject("positions");
-            JsonObject normals = obj.getAsJsonObject("normals");
-            JsonObject uvs = obj.getAsJsonObject("uvs");
-            JsonObject vdincies = obj.getAsJsonObject("vindices");
-            JsonObject weights = obj.getAsJsonObject("weights");
-            JsonObject vcounts = obj.getAsJsonObject("vcounts");
-            JsonObject parts = obj.getAsJsonObject("parts");
-            JsonObject indices = obj.getAsJsonObject("indices");
+        float[] positionArray = ParseUtil.toFloatArray(positions.get("array").getAsJsonArray());
 
-            float[] positionArray = ParseUtil.toFloatArray(positions.get("array").getAsJsonArray());
-
-            for (int i = 0; i < positionArray.length / 3; i++) {
-                int k = i * 3;
-                Vec4f posVector = new Vec4f(positionArray[k], positionArray[k+1], positionArray[k+2], 1.0F);
-                OpenMatrix4f.transform(BLENDER_TO_MINECRAFT_COORD, posVector, posVector);
-                positionArray[k] = posVector.x;
-                positionArray[k+1] = posVector.y;
-                positionArray[k+2] = posVector.z;
-            }
-
-            float[] normalArray = ParseUtil.toFloatArray(normals.get("array").getAsJsonArray());
-
-            for (int i = 0; i < normalArray.length / 3; i++) {
-                int k = i * 3;
-                Vec4f normVector = new Vec4f(normalArray[k], normalArray[k+1], normalArray[k+2], 1.0F);
-                OpenMatrix4f.transform(BLENDER_TO_MINECRAFT_COORD, normVector, normVector);
-                normalArray[k] = normVector.x;
-                normalArray[k+1] = normVector.y;
-                normalArray[k+2] = normVector.z;
-            }
-
-            float[] uvArray = ParseUtil.toFloatArray(uvs.get("array").getAsJsonArray());
-            int[] animationIndexArray = ParseUtil.toIntArray(vdincies.get("array").getAsJsonArray());
-            float[] weightArray = ParseUtil.toFloatArray(weights.get("array").getAsJsonArray());
-            int[] vcountArray = ParseUtil.toIntArray(vcounts.get("array").getAsJsonArray());
-
-            Map<String, float[]> arrayMap = Maps.newHashMap();
-            Map<MeshPartDefinition, List<AnimatedVertexBuilder>> meshMap = Maps.newHashMap();
-
-            arrayMap.put("positions", positionArray);
-            arrayMap.put("normals", normalArray);
-            arrayMap.put("uvs", uvArray);
-            arrayMap.put("weights", weightArray);
-
-            if (parts != null) {
-                for (Map.Entry<String, JsonElement> e : parts.entrySet()) {
-                    meshMap.put(VanillaMeshPartDefinition.of(e.getKey()), VertexBuilder.createAnimated(ParseUtil.toIntArray(e.getValue().getAsJsonObject().get("array").getAsJsonArray()), vcountArray, animationIndexArray));
-                }
-            }
-
-            if (indices != null) {
-                meshMap.put(VanillaMeshPartDefinition.of("noGroups"), VertexBuilder.createAnimated(ParseUtil.toIntArray(indices.get("array").getAsJsonArray()), vcountArray, animationIndexArray));
-            }
-
-            return constructor.invoke(arrayMap, meshMap, null, this.getRenderProperties());
+        for (int i = 0; i < positionArray.length / 3; i++) {
+            int k = i * 3;
+            Vec4f posVector = new Vec4f(positionArray[k], positionArray[k+1], positionArray[k+2], 1.0F);
+            OpenMatrix4f.transform(BLENDER_TO_MINECRAFT_COORD, posVector, posVector);
+            positionArray[k] = posVector.x;
+            positionArray[k+1] = posVector.y;
+            positionArray[k+2] = posVector.z;
         }
+
+        float[] normalArray = ParseUtil.toFloatArray(normals.get("array").getAsJsonArray());
+
+        for (int i = 0; i < normalArray.length / 3; i++) {
+            int k = i * 3;
+            Vec4f normVector = new Vec4f(normalArray[k], normalArray[k+1], normalArray[k+2], 1.0F);
+            OpenMatrix4f.transform(BLENDER_TO_MINECRAFT_COORD, normVector, normVector);
+            normalArray[k] = normVector.x;
+            normalArray[k+1] = normVector.y;
+            normalArray[k+2] = normVector.z;
+        }
+
+        float[] uvArray = ParseUtil.toFloatArray(uvs.get("array").getAsJsonArray());
+        int[] animationIndexArray = ParseUtil.toIntArray(vdincies.get("array").getAsJsonArray());
+        float[] weightArray = ParseUtil.toFloatArray(weights.get("array").getAsJsonArray());
+        int[] vcountArray = ParseUtil.toIntArray(vcounts.get("array").getAsJsonArray());
+
+        Map<String, float[]> arrayMap = Maps.newHashMap();
+        Map<MeshPartDefinition, List<AnimatedVertexBuilder>> meshMap = Maps.newHashMap();
+
+        arrayMap.put("positions", positionArray);
+        arrayMap.put("normals", normalArray);
+        arrayMap.put("uvs", uvArray);
+        arrayMap.put("weights", weightArray);
+
+        if (parts != null) {
+            for (Map.Entry<String, JsonElement> e : parts.entrySet()) {
+                meshMap.put(VanillaMeshPartDefinition.of(e.getKey()), VertexBuilder.createAnimated(ParseUtil.toIntArray(e.getValue().getAsJsonObject().get("array").getAsJsonArray()), vcountArray, animationIndexArray));
+            }
+        }
+
+        if (indices != null) {
+            meshMap.put(VanillaMeshPartDefinition.of("noGroups"), VertexBuilder.createAnimated(ParseUtil.toIntArray(indices.get("array").getAsJsonArray()), vcountArray, animationIndexArray));
+        }
+
+        return constructor.invoke(arrayMap, meshMap, null, this.getRenderProperties());
     }
 
     public ModelConfig loadModelConfig(){
-        return new ModelConfig(new ResourceLocation(this.rootJson.get("texture").getAsString()),
+        return new ModelConfig(
                 this.rootJson.get("scaleX").getAsFloat(),
                 this.rootJson.get("scaleY").getAsFloat(),
                 this.rootJson.get("scaleZ").getAsFloat());
@@ -298,9 +287,8 @@ public class EFMMJsonModelLoader {
         Map<String, Joint> jointMap = Maps.newHashMap();
         Joint joint = getJoint(hierarchy, nameAsVertexGroups, jointMap, true);
         joint.initOriginTransform(new OpenMatrix4f());
-        String armatureName = this.resourceLocation.toString().replaceAll("(animmodels/|\\.json)", "");
 
-        return constructor.invoke(armatureName, jointMap.size(), joint, jointMap);
+        return constructor.invoke(name, jointMap.size(), joint, jointMap);
     }
 
     public static Joint getJoint(JsonObject object, JsonArray nameAsVertexGroups, Map<String, Joint> jointMap, boolean start) {
@@ -345,5 +333,6 @@ public class EFMMJsonModelLoader {
     public String getFileHash() {
         return this.fileHash;
     }
+
 
 }

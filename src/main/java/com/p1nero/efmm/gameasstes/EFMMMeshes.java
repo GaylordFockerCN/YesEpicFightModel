@@ -2,87 +2,66 @@ package com.p1nero.efmm.gameasstes;
 
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
-import com.p1nero.efmm.EFMMConfig;
+import com.google.gson.JsonObject;
+import com.mojang.logging.LogUtils;
 import com.p1nero.efmm.EpicFightMeshModelMod;
 import com.p1nero.efmm.data.EFMMJsonModelLoader;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import org.slf4j.Logger;
 import yesman.epicfight.api.client.model.AnimatedMesh;
 import yesman.epicfight.api.client.model.AnimatedVertexBuilder;
 import yesman.epicfight.api.client.model.Meshes;
 import yesman.epicfight.api.forgeevent.ModelBuildEvent;
 import yesman.epicfight.client.mesh.HumanoidMesh;
 
-import java.util.HashMap;
-import java.util.UUID;
+import java.io.File;
+import java.io.FileNotFoundException;
 
 @Mod.EventBusSubscriber(modid = EpicFightMeshModelMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class EFMMMeshes {
 
-    public static final BiMap<ResourceLocation, AnimatedMesh> MESHES = HashBiMap.create();
-    public static final HashMap<UUID, ResourceLocation> MESH_LOCATION_MAP = new HashMap<>();
+    public static final BiMap<String, AnimatedMesh> MESHES = HashBiMap.create();
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     @SubscribeEvent
     public static void build(ModelBuildEvent.MeshBuild event) {
-        loadMeshes();
-    }
-
-    public static void loadMeshes(){
-        for (ResourceLocation resourceLocation : EFMMConfig.MODELS) {
-            getOrCreateAnimatedMesh(resourceLocation, HumanoidMesh::new);
-            EpicFightMeshModelMod.LOGGER.info("LOAD ADDITIONAL EPIC FIGHT MESH >> {}", resourceLocation.toString());
-        }
-    }
-
-    public static void reloadMeshes(){
-        MESHES.clear();
-        loadMeshes();
-    }
-
-    public static void bindMesh(Entity entity, String resourceLocation){
-        bindMesh(entity, new ResourceLocation(resourceLocation));
-    }
-
-    public static void bindMesh(Entity entity, ResourceLocation resourceLocation){
-        if(!MESHES.containsKey(resourceLocation)){
-            EpicFightMeshModelMod.LOGGER.info("mesh {} doesn't exist", resourceLocation.toString());
-            return;
-        }
-        MESH_LOCATION_MAP.put(entity.getUUID(), resourceLocation);
-        EpicFightMeshModelMod.LOGGER.info("bind armature {} to {}", resourceLocation.toString(), entity.getDisplayName().getString());
-    }
-
-    public static boolean hasMesh(Entity entity){
-        return MESH_LOCATION_MAP.containsKey(entity.getUUID());
-    }
-
-    public static AnimatedMesh getMeshFor(Entity entity){
-        if(hasMesh(entity)){
-            return MESHES.get(MESH_LOCATION_MAP.get(entity.getUUID()));
-        }
-        return Meshes.BIPED;
-    }
-
-    public static void removeMesh(Entity entity){
-        if(!MESH_LOCATION_MAP.containsKey(entity.getUUID())){
-            return;
-        }
-        MESH_LOCATION_MAP.remove(entity.getUUID());
+        getOrCreateAnimatedMesh(new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"), HumanoidMesh::new);
     }
 
     @SuppressWarnings("unchecked")
-    public static <M extends AnimatedMesh> M getOrCreateAnimatedMesh(ResourceLocation rl, Meshes.MeshContructor<AnimatedMesh.AnimatedModelPart, AnimatedVertexBuilder, M> constructor) {
-        return (M) MESHES.computeIfAbsent(rl, (key) -> {
-            EFMMJsonModelLoader jsonModelLoader = new EFMMJsonModelLoader(wrapLocation(rl));
+    public static <M extends AnimatedMesh> M getOrCreateAnimatedMesh(String modelId, JsonObject meshJson, Meshes.MeshContructor<AnimatedMesh.AnimatedModelPart, AnimatedVertexBuilder, M> constructor) {
+        return (M) MESHES.computeIfAbsent(modelId, (key) -> {
+            EFMMJsonModelLoader jsonModelLoader;
+            jsonModelLoader = new EFMMJsonModelLoader(meshJson);
+            LOGGER.info("LOAD ADDITIONAL EPIC FIGHT MESH >> {}", modelId);
             return jsonModelLoader.loadAnimatedMesh(constructor);
         });
     }
 
-    public static ResourceLocation wrapLocation(ResourceLocation rl) {
-        return rl.getPath().matches("animmodels/.*\\.json") ? rl : new ResourceLocation(rl.getNamespace(), "animmodels/" + rl.getPath() + ".json");
+    @SuppressWarnings("unchecked")
+    public static <M extends AnimatedMesh> M getOrCreateAnimatedMesh(String modelId, File meshFile, Meshes.MeshContructor<AnimatedMesh.AnimatedModelPart, AnimatedVertexBuilder, M> constructor) {
+        return (M) MESHES.computeIfAbsent(modelId, (key) -> {
+            EFMMJsonModelLoader jsonModelLoader;
+            try {
+                jsonModelLoader = new EFMMJsonModelLoader(meshFile);
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+            LOGGER.info("LOAD ADDITIONAL EPIC FIGHT MESH >> {}", modelId);
+            return jsonModelLoader.loadAnimatedMesh(constructor);
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <M extends AnimatedMesh> M getOrCreateAnimatedMesh(ResourceLocation resourceLocation, Meshes.MeshContructor<AnimatedMesh.AnimatedModelPart, AnimatedVertexBuilder, M> constructor) {
+        return (M) MESHES.computeIfAbsent(resourceLocation.toString(), (key) -> {
+            EFMMJsonModelLoader jsonModelLoader;
+            jsonModelLoader = new EFMMJsonModelLoader(Meshes.wrapLocation(resourceLocation));
+            return jsonModelLoader.loadAnimatedMesh(constructor);
+        });
     }
 
 }

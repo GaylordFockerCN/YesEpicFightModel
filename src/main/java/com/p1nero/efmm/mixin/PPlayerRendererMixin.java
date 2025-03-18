@@ -1,5 +1,6 @@
 package com.p1nero.efmm.mixin;
 
+import com.p1nero.efmm.efmodel.ClientModelManager;
 import com.p1nero.efmm.gameasstes.EFMMMeshes;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.entity.player.PlayerRenderer;
@@ -19,8 +20,8 @@ public class PPlayerRendererMixin {
 
     @Inject(method = "getMeshProvider(Lyesman/epicfight/client/world/capabilites/entitypatch/player/AbstractClientPlayerPatch;)Lyesman/epicfight/api/client/model/MeshProvider;", at = @At("HEAD"), cancellable = true, remap = false)
     private void efmm$replaceMesh(AbstractClientPlayerPatch<AbstractClientPlayer> playerPatch, CallbackInfoReturnable<MeshProvider<HumanoidMesh>> cir){
-        if(EFMMMeshes.hasMesh(playerPatch.getOriginal()) && !playerPatch.getOriginal().isSpectator()){
-            AnimatedMesh mesh = EFMMMeshes.getMeshFor(playerPatch.getOriginal());
+        if(ClientModelManager.hasMesh(playerPatch.getOriginal()) && !playerPatch.getOriginal().isSpectator()){
+            AnimatedMesh mesh = ClientModelManager.getMeshFor(playerPatch.getOriginal());
             if(mesh instanceof HumanoidMesh humanoidMesh){
                 cir.setReturnValue(() -> humanoidMesh);
             }
@@ -32,7 +33,7 @@ public class PPlayerRendererMixin {
      */
     @Inject(method = "prepareModel(Lyesman/epicfight/client/mesh/HumanoidMesh;Lnet/minecraft/client/player/AbstractClientPlayer;Lyesman/epicfight/client/world/capabilites/entitypatch/player/AbstractClientPlayerPatch;Lnet/minecraft/client/renderer/entity/player/PlayerRenderer;)V", at = @At("HEAD"), cancellable = true, remap = false)
     private void efmm$prepareModel(HumanoidMesh mesh, AbstractClientPlayer player, AbstractClientPlayerPatch<AbstractClientPlayer> playerPatch, PlayerRenderer renderer, CallbackInfo ci){
-        if(EFMMMeshes.hasMesh(playerPatch.getOriginal()) && !player.isSpectator()){
+        if(ClientModelManager.hasMesh(playerPatch.getOriginal()) && !player.isSpectator()){
             mesh.initialize();
             renderer.setModelProperties(player);
             ci.cancel();

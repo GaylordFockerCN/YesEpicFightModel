@@ -2,83 +2,141 @@ package com.p1nero.efmm.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
-import com.p1nero.efmm.EFMMConfig;
-import com.p1nero.efmm.gameasstes.EFMMArmatures;
+import com.mojang.logging.LogUtils;
+import com.p1nero.efmm.EpicFightMeshModelMod;
+import com.p1nero.efmm.efmodel.ServerModelManager;
 import com.p1nero.efmm.network.PacketHandler;
 import com.p1nero.efmm.network.PacketRelay;
-import com.p1nero.efmm.network.packet.ReloadModelsPacket;
-import com.p1nero.efmm.network.packet.ResetArmaturePacket;
-import com.p1nero.efmm.network.packet.SyncArmaturePacket;
+import com.p1nero.efmm.network.packet.ResetClientModelPacket;
+import com.p1nero.efmm.network.packet.BindModelPacket;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import org.slf4j.Logger;
 
 public class EFMMCommand {
+    private static final Logger LOGGER = LogUtils.getLogger();
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(Commands.literal("reloadMeshModels").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
-                .executes((context) -> {
-                    EFMMArmatures.reloadArmatures();
-                    PacketRelay.sendToAll(PacketHandler.INSTANCE, new ReloadModelsPacket());
-                    return 0;
-                })
-        );
-        dispatcher.register(Commands.literal("bindMeshForSelf")
-                .then(Commands.argument("resource_location", StringArgumentType.string())
-                        .suggests(((commandContext, suggestionsBuilder) -> {
-                            for (String s : EFMMConfig.MODELS_STRINGS.get()) {
-                                suggestionsBuilder.suggest("\"" + s + "\"");
-                            }
-                            return suggestionsBuilder.buildFuture();
-                        }))
-                        .executes((context) -> {
-                            Entity entity =  context.getSource().getEntity();
-                            if(entity == null){
-                                return -1;
-                            }
-                            bind(entity, StringArgumentType.getString(context, "resource_location"));
-                            return 0;
-                        })
-                )
-        );
-        dispatcher.register(Commands.literal("bindMeshFor").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
+
+        dispatcher.register(Commands.literal("authEFModel").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
                 .then(Commands.argument("entities", EntityArgument.entities())
-                        .then(Commands.argument("resource_location", StringArgumentType.string())
+                        .then(Commands.argument("model_id", StringArgumentType.string())
                                 .suggests(((commandContext, suggestionsBuilder) -> {
-                                    for (String s : EFMMConfig.MODELS_STRINGS.get()) {
+                                    for (String s : ServerModelManager.getAllModels()) {
                                         suggestionsBuilder.suggest("\"" + s + "\"");
                                     }
                                     return suggestionsBuilder.buildFuture();
                                 }))
                                 .executes((context) -> {
                                     for (Entity entity : EntityArgument.getEntities(context, "entities")) {
-                                        bind(entity, StringArgumentType.getString(context, "resource_location"));
+                                        String modelId = StringArgumentType.getString(context, "model_id");
+                                        ServerModelManager.authModelFor(entity, modelId);
+                                        LOGGER.info("give {} permission to use \"{}\" ", entity.getDisplayName().getString(), modelId);
                                     }
                                     return 0;
                                 })
                         )
                 )
         );
-        dispatcher.register(Commands.literal("resetMeshForSelf")
+
+        dispatcher.register(Commands.literal("authEFModel").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
+                .then(Commands.argument("entities", EntityArgument.entities())
+                        .then(Commands.literal("addAll"))
+                        .executes((context) -> {
+                            for (Entity entity : EntityArgument.getEntities(context, "entities")) {
+                                ServerModelManager.authAllModelFor(entity);
+                                LOGGER.info("Give {} permission to use all models", entity.getDisplayName().getString());
+                            }
+                            return 0;
+                        })
+                )
+        );
+
+        dispatcher.register(Commands.literal("removeEFModelAuth").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
+                .then(Commands.argument("entities", EntityArgument.entities())
+                        .then(Commands.literal("removeAll"))
+                        .executes((context) -> {
+                            for (Entity entity : EntityArgument.getEntities(context, "entities")) {
+                                for (String modelId : ServerModelManager.ALL_MODELS.keySet()) {
+                                    ServerModelManager.removeAuthFor(entity, modelId);
+                                }
+                                LOGGER.info("Give {} permission to use all models", entity.getDisplayName().getString());
+                            }
+                            return 0;
+                        })
+                )
+        );
+
+        dispatcher.register(Commands.literal("reloadEFModels").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
                 .executes((context) -> {
-                    Entity entity = context.getSource().getEntity();
-                    if(entity == null){
-                        return -1;
-                    }
-                    EFMMArmatures.removeArmature(entity);
-                    PacketRelay.sendToAll(PacketHandler.INSTANCE, new ResetArmaturePacket(entity.getId()));
+                    ServerModelManager.reloadEFModels();
                     return 0;
                 })
         );
-        dispatcher.register(Commands.literal("resetMeshFor").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
+        dispatcher.register(Commands.literal("bindEFModelSelf")
+                .then(Commands.argument("model_id", StringArgumentType.string())
+                        .suggests(((context, suggestionsBuilder) -> {
+                            Entity entity = context.getSource().getEntity();
+                            if (entity instanceof ServerPlayer serverPlayer) {
+                                for (String s : ServerModelManager.getOrCreateAllowedModelsFor(serverPlayer)) {
+                                    suggestionsBuilder.suggest("\"" + s + "\"");
+                                }
+                            }
+                            return suggestionsBuilder.buildFuture();
+                        }))
+                        .executes((context) -> {
+                            Entity entity = context.getSource().getEntity();
+                            if (entity == null) {
+                                return -1;
+                            }
+                            bind(entity, StringArgumentType.getString(context, "model_id"));
+                            return 0;
+                        })
+                )
+        );
+        dispatcher.register(Commands.literal("bindEFModelFor").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
+                .then(Commands.argument("entities", EntityArgument.entities())
+                        .then(Commands.argument("model_id", StringArgumentType.string())
+                                .suggests(((commandContext, suggestionsBuilder) -> {
+                                    for (String s : ServerModelManager.getAllModels()) {
+                                        suggestionsBuilder.suggest("\"" + s + "\"");
+                                    }
+                                    return suggestionsBuilder.buildFuture();
+                                }))
+                                .executes((context) -> {
+                                    for (Entity entity : EntityArgument.getEntities(context, "entities")) {
+                                        String modelId = StringArgumentType.getString(context, "model_id");
+                                        if (ServerModelManager.ALLOWED_MODELS.get(entity.getUUID()).contains(modelId)) {
+                                            bind(entity, modelId);
+                                        } else {
+                                            LOGGER.warn("{} doesn't have permission to use \"{}\" ", entity.getDisplayName().getString(), modelId);
+                                        }
+                                    }
+                                    return 0;
+                                })
+                        )
+                )
+        );
+        dispatcher.register(Commands.literal("resetEFModelSelf")
+                .executes((context) -> {
+                    Entity entity = context.getSource().getEntity();
+                    if (entity == null) {
+                        return -1;
+                    }
+                    ServerModelManager.removeModelFor(entity);
+                    PacketRelay.sendToAll(PacketHandler.INSTANCE, new ResetClientModelPacket(entity.getId()));
+                    return 0;
+                })
+        );
+        dispatcher.register(Commands.literal("resetEFModelFor").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
                 .then(Commands.argument("entities", EntityArgument.entities())
                         .executes((context) -> {
                             for (Entity entity : EntityArgument.getEntities(context, "entities")) {
-                                EFMMArmatures.removeArmature(entity);
-                                PacketRelay.sendToAll(PacketHandler.INSTANCE, new ResetArmaturePacket(entity.getId()));
+                                ServerModelManager.removeModelFor(entity);
+                                PacketRelay.sendToAll(PacketHandler.INSTANCE, new ResetClientModelPacket(entity.getId()));
                             }
                             return 0;
                         })
@@ -86,13 +144,12 @@ public class EFMMCommand {
         );
     }
 
-    public static void bind(Entity entity, String locationString){
-        ResourceLocation resourceLocation = new ResourceLocation(locationString);
-        if (EFMMArmatures.bindArmature(entity, resourceLocation)) {
-            PacketRelay.sendToAll(PacketHandler.INSTANCE, new SyncArmaturePacket(entity.getId(), resourceLocation));
+    public static void bind(Entity entity, String modelId) {
+        if (ServerModelManager.bindModelFor(entity, modelId)) {
+            PacketRelay.sendToAll(PacketHandler.INSTANCE, new BindModelPacket(entity.getId(), modelId));
         } else {
             if (entity instanceof ServerPlayer serverPlayer) {
-                serverPlayer.displayClientMessage(Component.literal("armature [" + resourceLocation + "] doesn't exist"), true);
+                serverPlayer.displayClientMessage(Component.literal("model [" + modelId + "] doesn't exist"), true);
             }
         }
     }
