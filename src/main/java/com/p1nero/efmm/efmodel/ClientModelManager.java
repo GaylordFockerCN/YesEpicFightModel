@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
 public class ClientModelManager {
     public static final Set<String> AUTHED_MODELS = new HashSet<>();
     public static final BiMap<String, ModelConfig> ALL_MODELS = HashBiMap.create();
-    public static final BiMap<String, ResourceLocation> TEXTURE_CACHE = HashBiMap.create();
+    public static final Map<String, ResourceLocation> TEXTURE_CACHE = new HashMap<>();
     public static final Map<UUID, String> ENTITY_MODEL_MAP = new HashMap<>();
     private static final Logger LOGGER = LogUtils.getLogger();
     public static Set<String> getAllowedModels(){

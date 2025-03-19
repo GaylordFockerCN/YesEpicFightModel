@@ -1,7 +1,9 @@
 package com.p1nero.efmm.efmodel;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
-import com.p1nero.efmm.EpicFightMeshModelMod;
 import com.p1nero.efmm.data.EFMMJsonModelLoader;
 import com.p1nero.efmm.data.ModelConfig;
 import com.p1nero.efmm.gameasstes.EFMMArmatures;
@@ -9,7 +11,6 @@ import com.p1nero.efmm.network.PacketHandler;
 import com.p1nero.efmm.network.PacketRelay;
 import com.p1nero.efmm.network.packet.AuthModelPacket;
 import com.p1nero.efmm.network.packet.RegisterModelPacketPacket;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.fml.loading.FMLPaths;
@@ -23,8 +24,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.stream.Stream;
+
+import static net.minecraft.util.datafix.fixes.BlockEntitySignTextStrictJsonFix.GSON;
 
 public class ServerModelManager {
     public static final Map<UUID, Set<String>> ALLOWED_MODELS = new HashMap<>();
@@ -42,9 +46,11 @@ public class ServerModelManager {
         return ALL_MODELS.keySet();
     }
 
-    public static void syncAllAllowedModelToClient(Entity player) {
-        Set<String> Strings = getOrCreateAllowedModelsFor(player);
-        //TODO 发包
+    public static void authAllAllowedModelToClient(Entity player) {
+        if (getOrCreateAllowedModelsFor(player).addAll(ALL_MODELS.keySet()) && player instanceof ServerPlayer serverPlayer) {
+            PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(false, getOrCreateAllowedModelsFor(player).stream().toList()), serverPlayer);
+            LOGGER.info("Send all models permission to {}", player.getDisplayName().getString());
+        }
     }
 
     public static void authModelFor(Entity player, String modelId) {
@@ -55,8 +61,11 @@ public class ServerModelManager {
         }
     }
 
+    /**
+     * TODO 做加密
+     */
     public static void sendModelTo(ServerPlayer serverPlayer, String modelId) throws IOException {
-        PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new RegisterModelPacketPacket("aaa", modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
+        PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new RegisterModelPacketPacket("key_todo", modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
         LOGGER.info("Send model \"{}\" to {}", modelId, serverPlayer.getDisplayName().getString());
     }
 
@@ -117,30 +126,72 @@ public class ServerModelManager {
         return new Vec3f(config.scaleX(), config.scaleY(), config.scaleZ());
     }
 
-    public static void loadNativeModelConfig(ResourceLocation resourceLocation) {
-        ALL_MODELS.computeIfAbsent(resourceLocation.toString(), (key) -> {
-            EFMMJsonModelLoader jsonModelLoader;
-            jsonModelLoader = new EFMMJsonModelLoader(wrapConfigLocation(resourceLocation));
-            return jsonModelLoader.loadModelConfig();
-        });
-    }
-
-    public static ResourceLocation wrapConfigLocation(ResourceLocation rl) {
-        return rl.getPath().matches("animmodels/.*\\.json") ? rl : new ResourceLocation(rl.getNamespace(), "animmodels/" + rl.getPath() + "_config.json");
-    }
-
     public static void saveAllowedModels() {
-        //TODO 持久化
-        //写入json，uuid为key，string集合为value
+        try {
+            Path authListsPath = EFMM_CONFIG_PATH.resolve("auth_lists.json");
+            JsonObject jsonObject = new JsonObject();
+            for (Map.Entry<UUID, Set<String>> entry : ALLOWED_MODELS.entrySet()) {
+                UUID uuid = entry.getKey();
+                Set<String> models = entry.getValue();
+                JsonElement modelsArray = GSON.toJsonTree(models);
+                jsonObject.add(uuid.toString(), modelsArray);
+            }
 
+            String jsonString = GSON.toJson(jsonObject);
+
+            Path parentDir = authListsPath.getParent();
+            if (parentDir != null && !Files.exists(parentDir)) {
+                Files.createDirectories(parentDir);
+            }
+
+            Files.writeString(authListsPath, jsonString, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+
+            LOGGER.info("Saved all allowed models to : " + authListsPath);
+        } catch (IOException e) {
+            LOGGER.error("Failed to save allowed models!" , e);
+        }
 
     }
 
-    public static void loadAllowedModels() throws FileNotFoundException {
-        //TODO 持久化
-        Path authListsPath = EFMM_CONFIG_PATH.resolve("auth_lists");
-        EFMMJsonModelLoader mainJsonLoader = new EFMMJsonModelLoader(authListsPath.toFile());
+    public static void loadAllowedModels() {
+        try {
+            Path authListsPath = EFMM_CONFIG_PATH.resolve("auth_lists.json");
+            if(!Files.exists(authListsPath)){
+                return;
+            }
+            EFMMJsonModelLoader authListLoader = new EFMMJsonModelLoader(authListsPath.toFile());
+            JsonObject rootJson = authListLoader.getRootJson();
+            for (Map.Entry<String, JsonElement> entry : rootJson.entrySet()) {
+                String uuidStr = entry.getKey();
+                JsonElement valueElement = entry.getValue();
 
+                UUID uuid;
+                try {
+                    uuid = UUID.fromString(uuidStr);
+                } catch (IllegalArgumentException e) {
+                    LOGGER.error("Invalid UUID : {}, skipped", uuidStr);
+                    continue;
+                }
+
+                if (!valueElement.isJsonArray()) {
+                    LOGGER.error("Invalid value in UUID: {} , skipped", uuid);
+                    continue;
+                }
+
+                JsonArray jsonArray = valueElement.getAsJsonArray();
+                Set<String> models = new HashSet<>();
+                for (JsonElement element : jsonArray) {
+                    if (element.isJsonPrimitive()) {
+                        models.add(element.getAsString());
+                    } else {
+                        LOGGER.error("Invalid value in UUID: {}, skipped", uuid);
+                    }
+                }
+                ALLOWED_MODELS.put(uuid, models);
+            }
+        } catch (FileNotFoundException e){
+            LOGGER.error("Failed to load allowed models!", e);
+        }
 
     }
 
@@ -148,8 +199,6 @@ public class ServerModelManager {
      * 从config读取所有模型文件并缓存
      */
     public static void loadAllModels() {
-        EFMMArmatures.loadNativeArmatures();
-        loadNativeModelConfig(new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
 
         try (Stream<Path> subDirs = Files.list(EFMM_CONFIG_PATH)) {
             subDirs.filter(Files::isDirectory).forEach(modelFileDir -> {

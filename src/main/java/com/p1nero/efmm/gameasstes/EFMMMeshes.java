@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.p1nero.efmm.EpicFightMeshModelMod;
 import com.p1nero.efmm.data.EFMMJsonModelLoader;
+import com.p1nero.efmm.efmodel.ClientModelManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -29,6 +30,7 @@ public class EFMMMeshes {
     @SubscribeEvent
     public static void build(ModelBuildEvent.MeshBuild event) {
         getOrCreateAnimatedMesh(new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"), HumanoidMesh::new);
+        ClientModelManager.TEXTURE_CACHE.put("efmm:entity/anon", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "textures/entity/anon.png"));
     }
 
     @SuppressWarnings("unchecked")
