@@ -33,7 +33,7 @@ import java.util.regex.Pattern;
 
 public class ClientModelManager {
     public static final Set<String> AUTHED_MODELS = new HashSet<>();
-    public static final BiMap<String, ModelConfig> ALL_MODELS = HashBiMap.create();
+    public static final Map<String, ModelConfig> ALL_MODELS = new HashMap<>();
     public static final Map<String, ResourceLocation> TEXTURE_CACHE = new HashMap<>();
     public static final Map<UUID, String> ENTITY_MODEL_MAP = new HashMap<>();
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -41,7 +41,7 @@ public class ClientModelManager {
         return ALL_MODELS.keySet();
     }
     private static final Pattern INVALID_CHARS_PATTERN = Pattern.compile("[^a-z_]");
-    public static final int MAX_REQUEST_INTERVAL = 60;
+    public static final int MAX_REQUEST_INTERVAL = 40;
     private static int requestDelayTimer;
 
     @OnlyIn(Dist.CLIENT)
@@ -153,6 +153,7 @@ public class ClientModelManager {
     public static ResourceLocation getTextureFor(Entity entity){
         String modelId = ENTITY_MODEL_MAP.get(entity.getUUID());
         if(!ALL_MODELS.containsKey(modelId) || !TEXTURE_CACHE.containsKey(modelId)){
+            sendRequestModelPacket(modelId);
             return Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entity).getTextureLocation(entity);
         }
         return TEXTURE_CACHE.get(modelId);

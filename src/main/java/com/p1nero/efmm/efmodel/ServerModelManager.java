@@ -47,7 +47,7 @@ public class ServerModelManager {
     }
 
     public static void authAllAllowedModelToClient(Entity player) {
-        if (getOrCreateAllowedModelsFor(player).addAll(ALL_MODELS.keySet()) && player instanceof ServerPlayer serverPlayer) {
+        if (player instanceof ServerPlayer serverPlayer) {
             PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(false, getOrCreateAllowedModelsFor(player).stream().toList()), serverPlayer);
             LOGGER.info("Send all models permission to {}", player.getDisplayName().getString());
         }
@@ -65,7 +65,7 @@ public class ServerModelManager {
      * TODO 做加密
      */
     public static void sendModelTo(ServerPlayer serverPlayer, String modelId) throws IOException {
-        PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new RegisterModelPacketPacket("key_todo", modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
+        PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new RegisterModelPacketPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
         LOGGER.info("Send model \"{}\" to {}", modelId, serverPlayer.getDisplayName().getString());
     }
 
