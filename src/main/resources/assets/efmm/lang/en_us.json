@@ -1,0 +1,15 @@
+{
+  "tip.efmm.auth_send": "Give [%s] to",
+  "tip.efmm.auth_all_send": "Give all models to",
+  "tip.efmm.auth_remove": "Remove [%s] permission for",
+  "tip.efmm.auth_all_remove": "Remove all models permission for",
+  "tip.efmm.model_reload": "Reloaded all models.",
+  "tip.efmm.bind_failed": "Model [%s] is invalid!",
+  "tip.efmm.bind_success": "Bind [%s] to ",
+  "tip.efmm.bind_model_lost": "Model [%s] doesn't exist!",
+  "tip.efmm.bind_without_permission": "doesn't have permission to use [%s]",
+  "tip.efmm.reset_model": "Reset model for ",
+  "gui.efmm.select.models": "Select EF Model Screen",
+  "key.categories.efmm": "Yes Epic Fight Model Keys",
+  "key.efmm.open_select_screen": "Open Select Model Screen"
+}

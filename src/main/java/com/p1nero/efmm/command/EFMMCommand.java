@@ -37,7 +37,7 @@ public class EFMMCommand {
                                         String modelId = StringArgumentType.getString(context, "model_id");
                                         ServerModelManager.authModelFor(entity, modelId);
                                         if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
-                                            serverPlayer.displayClientMessage(Component.literal("Give \"" + modelId + "\" to ").append(serverPlayer.getDisplayName()), false);
+                                            serverPlayer.displayClientMessage(Component.translatable("tip.efmm.auth_send", modelId).append(serverPlayer.getDisplayName()), false);
                                         }
                                         LOGGER.info("give {} permission to use \"{}\" ", entity.getDisplayName().getString(), modelId);
                                     }
@@ -49,7 +49,7 @@ public class EFMMCommand {
                                     for (Entity entity : EntityArgument.getEntities(context, "entities")) {
                                         ServerModelManager.authAllModelFor(entity);
                                         if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
-                                            serverPlayer.displayClientMessage(Component.literal("Give all models to ").append(entity.getDisplayName()), false);
+                                            serverPlayer.displayClientMessage(Component.translatable("tip.efmm.auth_all_send").append(entity.getDisplayName()), false);
                                         }
                                         LOGGER.info("Give {} permission to use all models", entity.getDisplayName().getString());
                                     }
@@ -73,7 +73,7 @@ public class EFMMCommand {
                                         String modelId = StringArgumentType.getString(context, "model_id");
                                         ServerModelManager.removeAuthFor(entity, modelId);
                                         if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
-                                            serverPlayer.displayClientMessage(Component.literal("Remove \"" + modelId + "\" permission for ").append(entity.getDisplayName()), false);
+                                            serverPlayer.displayClientMessage(Component.translatable("tip.efmm.auth_remove", modelId).append(entity.getDisplayName()), false);
                                         }
                                         LOGGER.info("remove {} permission to use \"{}\" ", entity.getDisplayName().getString(), modelId);
                                     }
@@ -85,7 +85,7 @@ public class EFMMCommand {
                                     for (Entity entity : EntityArgument.getEntities(context, "entities")) {
                                         ServerModelManager.removeAllAuthFor(entity);
                                         if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
-                                            serverPlayer.displayClientMessage(Component.literal("Remove all model permission for ").append(entity.getDisplayName()), false);
+                                            serverPlayer.displayClientMessage(Component.translatable("tip.efmm.auth_all_remove").append(entity.getDisplayName()), false);
                                         }
                                         LOGGER.info("Remove {} permission to use all models", entity.getDisplayName().getString());
                                     }
@@ -99,7 +99,7 @@ public class EFMMCommand {
                 .executes((context) -> {
                     ServerModelManager.reloadEFModels();
                     if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
-                        serverPlayer.displayClientMessage(Component.literal("Reloaded all models."), false);
+                        serverPlayer.displayClientMessage(Component.translatable("tip.efmm.model_reload"), false);
                     }
                     return 0;
                 })
@@ -126,7 +126,7 @@ public class EFMMCommand {
                                 bind(context, entity, modelId);
                             } else {
                                 if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
-                                    serverPlayer.displayClientMessage(Component.literal("Model \"" + modelId + "\" is invalid!"), false);
+                                    serverPlayer.displayClientMessage(Component.translatable("tip.efmm.bind_failed", modelId), false);
                                 }
                             }
                             return 0;
@@ -150,7 +150,7 @@ public class EFMMCommand {
                                             bind(context, entity, modelId);
                                         } else {
                                             if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
-                                                serverPlayer.displayClientMessage(entity.getDisplayName().copy().append(Component.literal(" doesn't have permission to use \"" + modelId + "\" ")), false);
+                                                serverPlayer.displayClientMessage(entity.getDisplayName().copy().append(Component.translatable("tip.efmm.bind_without_permission", modelId)), false);
                                             }
                                             LOGGER.warn("{} doesn't have permission to use \"{}\" ", entity.getDisplayName().getString(), modelId);
                                         }
@@ -182,7 +182,7 @@ public class EFMMCommand {
                             for (Entity entity : EntityArgument.getEntities(context, "entities")) {
                                 ServerModelManager.removeModelFor(entity);
                                 if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
-                                    serverPlayer.displayClientMessage(Component.literal("reset model for ").append(entity.getDisplayName()), false);
+                                    serverPlayer.displayClientMessage(Component.translatable("tip.efmm.reset_model").append(entity.getDisplayName()), false);
                                 }
                                 PacketRelay.sendToAll(PacketHandler.INSTANCE, new ResetClientModelPacket(entity.getId()));
                             }
@@ -193,16 +193,7 @@ public class EFMMCommand {
     }
 
     public static void bind(CommandContext<CommandSourceStack> context, Entity entity, String modelId) {
-        if (ServerModelManager.bindModelFor(entity, modelId)) {
-            PacketRelay.sendToAll(PacketHandler.INSTANCE, new BindModelPacket(entity.getId(), modelId));
-            if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
-                serverPlayer.displayClientMessage(Component.literal("Bind model \"" + modelId + "\" to ").append(serverPlayer.getDisplayName()), false);
-            }
-        } else {
-            if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
-                serverPlayer.displayClientMessage(Component.literal("model [" + modelId + "] doesn't exist"), false);
-            }
-        }
+        ServerModelManager.bindModelSync(context.getSource().getPlayer(), entity, modelId);
     }
 
 }

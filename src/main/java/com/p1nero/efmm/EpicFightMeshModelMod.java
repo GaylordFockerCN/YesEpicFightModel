@@ -60,7 +60,11 @@ public class EpicFightMeshModelMod {
 
     private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event){
         if(!event.getEntity().level().isClientSide){
-            ServerModelManager.authAllAllowedModelToClient(event.getEntity());
+            try {
+                ServerModelManager.authAllAllowedModelToClient(event.getEntity());
+            } catch (IOException e){
+                LOGGER.error("Failed to auth allowed model to client!", e);
+            }
         }
     }
 

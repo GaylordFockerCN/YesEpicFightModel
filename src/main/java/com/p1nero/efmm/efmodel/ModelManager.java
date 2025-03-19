@@ -17,9 +17,13 @@ public class ModelManager {
         EFMMArmatures.loadNativeArmatures();
         loadNativeModelConfig(ServerModelManager.ALL_MODELS, new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
         loadNativeModelConfig(ClientModelManager.ALL_MODELS, new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
+        ServerModelManager.NATIVE_MODELS.add(EpicFightMeshModelMod.MOD_ID + ":entity/anon");
     }
 
     public static boolean hasArmature(Entity entity){
+        if(entity == null){
+            return false;
+        }
         if(entity.level().isClientSide){
             return ClientModelManager.hasArmature(entity);
         } else {

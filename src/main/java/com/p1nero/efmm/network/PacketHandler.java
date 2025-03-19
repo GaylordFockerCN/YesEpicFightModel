@@ -19,11 +19,15 @@ public class PacketHandler {
     private static int index;
 
     public static  void register() {
+        //client
         register(BindModelPacket.class, BindModelPacket::decode);
         register(ResetClientModelPacket.class, ResetClientModelPacket::decode);
         register(AuthModelPacket.class, AuthModelPacket::decode);
-        register(RequestSyncModelPacket.class, RequestSyncModelPacket::decode);
         register(RegisterModelPacketPacket.class, RegisterModelPacketPacket::decode);
+
+        //server
+        register(RequestSyncModelPacket.class, RequestSyncModelPacket::decode);
+        register(RequestBindModelPacket.class, RequestBindModelPacket::decode);
     }
 
     private static <MSG extends BasePacket> void register(final Class<MSG> packet, Function<FriendlyByteBuf, MSG> decoder) {

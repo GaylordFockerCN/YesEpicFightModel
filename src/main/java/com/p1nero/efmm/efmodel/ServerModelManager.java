@@ -10,10 +10,13 @@ import com.p1nero.efmm.gameasstes.EFMMArmatures;
 import com.p1nero.efmm.network.PacketHandler;
 import com.p1nero.efmm.network.PacketRelay;
 import com.p1nero.efmm.network.packet.AuthModelPacket;
+import com.p1nero.efmm.network.packet.BindModelPacket;
 import com.p1nero.efmm.network.packet.RegisterModelPacketPacket;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.fml.loading.FMLPaths;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import yesman.epicfight.api.model.Armature;
 import yesman.epicfight.api.utils.math.Vec3f;
@@ -32,6 +35,7 @@ import static net.minecraft.util.datafix.fixes.BlockEntitySignTextStrictJsonFix.
 
 public class ServerModelManager {
     public static final Map<UUID, Set<String>> ALLOWED_MODELS = new HashMap<>();
+    public static final Set<String> NATIVE_MODELS = new HashSet<>();
     public static final Map<String, ModelConfig> ALL_MODELS = new HashMap<>();
     public static final Map<UUID, String> ENTITY_MODEL_MAP = new HashMap<>();
 
@@ -46,10 +50,15 @@ public class ServerModelManager {
         return ALL_MODELS.keySet();
     }
 
-    public static void authAllAllowedModelToClient(Entity player) {
+    public static void authAllAllowedModelToClient(Entity player) throws IOException {
         if (player instanceof ServerPlayer serverPlayer) {
             PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(false, getOrCreateAllowedModelsFor(player).stream().toList()), serverPlayer);
             LOGGER.info("Send all models permission to {}", player.getDisplayName().getString());
+            for(String modelId : ALLOWED_MODELS.get(player.getUUID())){
+                if(!NATIVE_MODELS.contains(modelId)){
+                    sendModelTo(serverPlayer, modelId);
+                }
+            }
         }
     }
 
@@ -61,9 +70,6 @@ public class ServerModelManager {
         }
     }
 
-    /**
-     * TODO 做加密
-     */
     public static void sendModelTo(ServerPlayer serverPlayer, String modelId) throws IOException {
         PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new RegisterModelPacketPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
         LOGGER.info("Send model \"{}\" to {}", modelId, serverPlayer.getDisplayName().getString());
@@ -98,6 +104,20 @@ public class ServerModelManager {
         ENTITY_MODEL_MAP.put(entity.getUUID(), modelId);
         return true;
     }
+
+    public static void bindModelSync(@Nullable ServerPlayer caster, Entity entity, String modelId) {
+        if (bindModelFor(entity, modelId)) {
+            PacketRelay.sendToAll(PacketHandler.INSTANCE, new BindModelPacket(entity.getId(), modelId));
+            if(caster != null){
+                caster.displayClientMessage(Component.translatable("tip.efmm.bind_success", modelId).append(caster.getDisplayName()), false);
+            }
+        } else {
+            if(caster != null){
+                caster.displayClientMessage(Component.translatable("tip.efmm.bind_model_lost", modelId), false);
+            }
+        }
+    }
+
 
     public static void removeModelFor(Entity entity) {
         ENTITY_MODEL_MAP.remove(entity.getUUID());

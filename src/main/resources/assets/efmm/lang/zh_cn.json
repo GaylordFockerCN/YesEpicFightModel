@@ -1,0 +1,15 @@
+{
+  "tip.efmm.auth_send": "将 [%s] 给予 ",
+  "tip.efmm.auth_all_send": "将所有模型给予",
+  "tip.efmm.auth_remove": "移除模型 [%s] 的权限 从 ",
+  "tip.efmm.auth_all_remove": "移除所有模型的权限 从",
+  "tip.efmm.model_reload": "重载所有模型",
+  "tip.efmm.bind_failed": "模型 [%s] 无效！",
+  "tip.efmm.bind_success": "将模型 [%s] 绑定至 ",
+  "tip.efmm.bind_model_lost": "模型 [%s] 不存在！",
+  "tip.efmm.bind_without_permission": "不具有使用 [%s] 的权限！",
+  "tip.efmm.reset_model": "重置模型 从 ",
+  "gui.efmm.select.models": "史诗战斗模型选择窗口",
+  "key.categories.efmm": "是！史诗战斗模组 键位",
+  "key.efmm.open_select_screen": "打开模型选择窗口"
+}
