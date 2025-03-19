@@ -21,8 +21,9 @@ public class PacketHandler {
     public static  void register() {
         register(BindModelPacket.class, BindModelPacket::decode);
         register(ResetClientModelPacket.class, ResetClientModelPacket::decode);
-        register(ReloadModelsPacket.class, ReloadModelsPacket::decode);
-        register(AuthModelPacketPacket.class, AuthModelPacketPacket::decode);
+        register(AuthModelPacket.class, AuthModelPacket::decode);
+        register(RequestSyncModelPacket.class, RequestSyncModelPacket::decode);
+        register(RegisterModelPacketPacket.class, RegisterModelPacketPacket::decode);
     }
 
     private static <MSG extends BasePacket> void register(final Class<MSG> packet, Function<FriendlyByteBuf, MSG> decoder) {

@@ -18,10 +18,15 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-public record AuthModelPacketPacket(String modelId, JsonObject modelJsonCache, JsonObject configJsonCache, byte[] imageCache) implements BasePacket {
+/**
+ * 在客户端注册并缓存模型
+ * TODO 加密解密
+ */
+public record RegisterModelPacketPacket(String key, String modelId, JsonObject modelJsonCache, JsonObject configJsonCache, byte[] imageCache) implements BasePacket {
     private static final Logger LOGGER = LogUtils.getLogger();
     @Override
     public void encode(FriendlyByteBuf buf) {
+        buf.writeUtf(key);
         buf.writeUtf(modelId);
 
         byte[] modelJsonBytes = modelJsonCache.toString().getBytes(StandardCharsets.UTF_8);
@@ -47,7 +52,8 @@ public record AuthModelPacketPacket(String modelId, JsonObject modelJsonCache, J
         }
     }
 
-    public static AuthModelPacketPacket decode(FriendlyByteBuf buf) {
+    public static RegisterModelPacketPacket decode(FriendlyByteBuf buf) {
+        String key = buf.readUtf();
         String modelId = buf.readUtf();
 
         byte[] modelJsonBytes = readSegmentedData(buf);
@@ -57,7 +63,7 @@ public record AuthModelPacketPacket(String modelId, JsonObject modelJsonCache, J
         JsonObject configJson = parseJson(new String(configJsonBytes, StandardCharsets.UTF_8));
 
         byte[] imageCache = readSegmentedData(buf);
-        return new AuthModelPacketPacket(modelId, modelJson, configJson, imageCache);
+        return new RegisterModelPacketPacket(key, modelId, modelJson, configJson, imageCache);
     }
 
     private static byte[] readSegmentedData(FriendlyByteBuf buf) {

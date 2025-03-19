@@ -39,11 +39,6 @@ public class EFMMCommand {
                                     return 0;
                                 })
                         )
-                )
-        );
-
-        dispatcher.register(Commands.literal("authEFModel").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
-                .then(Commands.argument("entities", EntityArgument.entities())
                         .then(Commands.literal("addAll"))
                         .executes((context) -> {
                             for (Entity entity : EntityArgument.getEntities(context, "entities")) {
@@ -57,13 +52,27 @@ public class EFMMCommand {
 
         dispatcher.register(Commands.literal("removeEFModelAuth").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
                 .then(Commands.argument("entities", EntityArgument.entities())
+                        .then(Commands.argument("model_id", StringArgumentType.string())
+                                .suggests(((commandContext, suggestionsBuilder) -> {
+                                    for (String s : ServerModelManager.getAllModels()) {
+                                        suggestionsBuilder.suggest("\"" + s + "\"");
+                                    }
+                                    return suggestionsBuilder.buildFuture();
+                                }))
+                                .executes((context) -> {
+                                    for (Entity entity : EntityArgument.getEntities(context, "entities")) {
+                                        String modelId = StringArgumentType.getString(context, "model_id");
+                                        ServerModelManager.removeAuthFor(entity, modelId);
+                                        LOGGER.info("remove {} permission to use \"{}\" ", entity.getDisplayName().getString(), modelId);
+                                    }
+                                    return 0;
+                                })
+                        )
                         .then(Commands.literal("removeAll"))
                         .executes((context) -> {
                             for (Entity entity : EntityArgument.getEntities(context, "entities")) {
-                                for (String modelId : ServerModelManager.ALL_MODELS.keySet()) {
-                                    ServerModelManager.removeAuthFor(entity, modelId);
-                                }
-                                LOGGER.info("Give {} permission to use all models", entity.getDisplayName().getString());
+                                ServerModelManager.removeAllAuthFor(entity);
+                                LOGGER.info("Remove {} permission to use all models", entity.getDisplayName().getString());
                             }
                             return 0;
                         })
@@ -76,6 +85,7 @@ public class EFMMCommand {
                     return 0;
                 })
         );
+
         dispatcher.register(Commands.literal("bindEFModelSelf")
                 .then(Commands.argument("model_id", StringArgumentType.string())
                         .suggests(((context, suggestionsBuilder) -> {
@@ -92,11 +102,19 @@ public class EFMMCommand {
                             if (entity == null) {
                                 return -1;
                             }
-                            bind(entity, StringArgumentType.getString(context, "model_id"));
+                            String modelId = StringArgumentType.getString(context, "model_id");
+                            if(ServerModelManager.getOrCreateAllowedModelsFor(entity).contains(modelId)){
+                                bind(entity, modelId);
+                            } else {
+                                if(entity instanceof ServerPlayer serverPlayer){
+                                    serverPlayer.displayClientMessage(Component.literal("Model \"" + modelId + "\" is invalid!"), true);
+                                }
+                            }
                             return 0;
                         })
                 )
         );
+
         dispatcher.register(Commands.literal("bindEFModelFor").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
                 .then(Commands.argument("entities", EntityArgument.entities())
                         .then(Commands.argument("model_id", StringArgumentType.string())
@@ -120,6 +138,7 @@ public class EFMMCommand {
                         )
                 )
         );
+
         dispatcher.register(Commands.literal("resetEFModelSelf")
                 .executes((context) -> {
                     Entity entity = context.getSource().getEntity();
@@ -131,6 +150,7 @@ public class EFMMCommand {
                     return 0;
                 })
         );
+
         dispatcher.register(Commands.literal("resetEFModelFor").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
                 .then(Commands.argument("entities", EntityArgument.entities())
                         .executes((context) -> {

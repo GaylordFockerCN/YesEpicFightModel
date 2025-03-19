@@ -16,6 +16,9 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.slf4j.Logger;
 
+import java.io.IOException;
+import java.nio.file.Files;
+
 @Mod(EpicFightMeshModelMod.MOD_ID)
 public class EpicFightMeshModelMod {
 
@@ -31,8 +34,15 @@ public class EpicFightMeshModelMod {
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, EFMMConfig.SPEC);
     }
 
-    private void commonSetup(final FMLCommonSetupEvent event) {
+    private void commonSetup(final FMLCommonSetupEvent event){
         PacketHandler.register();
+        try {
+            if(!Files.exists(ServerModelManager.EFMM_CONFIG_PATH)){
+                Files.createDirectory(ServerModelManager.EFMM_CONFIG_PATH);
+            }
+        } catch (IOException e){
+            LOGGER.error("Failed to create config path!", e);
+        }
     }
 
     private void onServerStart(ServerStartedEvent event){

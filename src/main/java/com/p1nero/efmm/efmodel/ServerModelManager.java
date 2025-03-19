@@ -1,6 +1,5 @@
 package com.p1nero.efmm.efmodel;
 
-import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.p1nero.efmm.EpicFightMeshModelMod;
 import com.p1nero.efmm.data.EFMMJsonModelLoader;
@@ -8,7 +7,8 @@ import com.p1nero.efmm.data.ModelConfig;
 import com.p1nero.efmm.gameasstes.EFMMArmatures;
 import com.p1nero.efmm.network.PacketHandler;
 import com.p1nero.efmm.network.PacketRelay;
-import com.p1nero.efmm.network.packet.AuthModelPacketPacket;
+import com.p1nero.efmm.network.packet.AuthModelPacket;
+import com.p1nero.efmm.network.packet.RegisterModelPacketPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -30,9 +30,6 @@ public class ServerModelManager {
     public static final Map<UUID, Set<String>> ALLOWED_MODELS = new HashMap<>();
     public static final Map<String, ModelConfig> ALL_MODELS = new HashMap<>();
     public static final Map<UUID, String> ENTITY_MODEL_MAP = new HashMap<>();
-    public static final Map<String, JsonObject> MODEL_JSON_CACHE = new HashMap<>();
-    public static final Map<String, JsonObject> CONFIG_JSON_CACHE = new HashMap<>();
-    public static final Map<String, byte[]> IMAGE_CACHE = new HashMap<>();
 
     public static final Path EFMM_CONFIG_PATH = FMLPaths.CONFIGDIR.get().resolve("efmm");
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -53,24 +50,36 @@ public class ServerModelManager {
     public static void authModelFor(Entity player, String modelId) {
         getOrCreateAllowedModelsFor(player).add(modelId);
         if (player instanceof ServerPlayer serverPlayer) {
-            PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacketPacket(modelId, MODEL_JSON_CACHE.get(modelId), CONFIG_JSON_CACHE.get(modelId), IMAGE_CACHE.get(modelId)), serverPlayer);
-            LOGGER.info("Send auth packet \"{}\" to {}", modelId, player.getDisplayName().getString());
+            PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(false, List.of(modelId)), serverPlayer);
+            LOGGER.info("Send \"{}\" permission to {}", modelId, player.getDisplayName().getString());
         }
     }
 
+    public static void sendModelTo(ServerPlayer serverPlayer, String modelId) throws IOException {
+        PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new RegisterModelPacketPacket("aaa", modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
+        LOGGER.info("Send model \"{}\" to {}", modelId, serverPlayer.getDisplayName().getString());
+    }
+
     public static void authAllModelFor(Entity player) {
-        getOrCreateAllowedModelsFor(player).addAll(ALL_MODELS.keySet());
-        //TODO 发包
+        if (getOrCreateAllowedModelsFor(player).addAll(ALL_MODELS.keySet()) && player instanceof ServerPlayer serverPlayer) {
+            PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(false, ALL_MODELS.keySet().stream().toList()), serverPlayer);
+            LOGGER.info("Send all models permission to {}", player.getDisplayName().getString());
+        }
     }
 
     public static void removeAuthFor(Entity player, String modelId) {
-        getOrCreateAllowedModelsFor(player).remove(modelId);
-        //TODO 发包
+        if (getOrCreateAllowedModelsFor(player).remove(modelId) && player instanceof ServerPlayer serverPlayer) {
+            PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(true, List.of(modelId)), serverPlayer);
+            LOGGER.info("Send remove \"{}\" auth packet to {}", modelId, player.getDisplayName().getString());
+        }
     }
 
     public static void removeAllAuthFor(Entity player) {
         getOrCreateAllowedModelsFor(player).clear();
-        //TODO 发包
+        if (player instanceof ServerPlayer serverPlayer) {
+            PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(true, ALL_MODELS.keySet().stream().toList()), serverPlayer);
+            LOGGER.info("Send remove all models packet to {}", player.getDisplayName().getString());
+        }
     }
 
     public static boolean bindModelFor(Entity entity, String modelId) {
@@ -149,13 +158,9 @@ public class ServerModelManager {
                     Path mainJsonPath = modelFileDir.resolve("main.json");
                     EFMMJsonModelLoader mainJsonLoader = new EFMMJsonModelLoader(mainJsonPath.toFile());
                     EFMMArmatures.ARMATURES.put(modelId, mainJsonLoader.loadArmature(HumanoidArmature::new));
-                    MODEL_JSON_CACHE.put(modelId, mainJsonLoader.getRootJson());
                     Path configJsonPath = modelFileDir.resolve("config.json");
                     EFMMJsonModelLoader configJsonLoader = new EFMMJsonModelLoader(configJsonPath.toFile());
                     ALL_MODELS.put(modelId, configJsonLoader.loadModelConfig());
-                    CONFIG_JSON_CACHE.put(modelId, configJsonLoader.getRootJson());
-                    Path texturePath = modelFileDir.resolve("texture.png");
-                    IMAGE_CACHE.put(modelId, Files.readAllBytes(texturePath));
                     LOGGER.info("LOAD EPIC FIGHT MODEL >> {}", modelId);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
@@ -165,6 +170,21 @@ public class ServerModelManager {
             LOGGER.error("Error when loading models", e);
             throw new RuntimeException(e);
         }
+    }
+
+    public static EFMMJsonModelLoader getModelJsonLoader(String modelId) throws FileNotFoundException {
+        Path mainJsonPath = EFMM_CONFIG_PATH.resolve(modelId).resolve("main.json");
+        return new EFMMJsonModelLoader(mainJsonPath.toFile());
+    }
+
+    public static EFMMJsonModelLoader getModelConfigJsonLoader(String modelId) throws FileNotFoundException {
+        Path mainJsonPath = EFMM_CONFIG_PATH.resolve(modelId).resolve("config.json");
+        return new EFMMJsonModelLoader(mainJsonPath.toFile());
+    }
+
+    public static byte[] getModelTexture(String modelId) throws IOException {
+        Path texturePath = EFMM_CONFIG_PATH.resolve(modelId).resolve("texture.png");
+        return Files.readAllBytes(texturePath);
     }
 
     public static void clearModels() {
