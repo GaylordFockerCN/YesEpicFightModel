@@ -157,7 +157,7 @@ public class SelectEFModelScreen extends Screen {
             this.setScrollAmount(0.0D);
             this.children().clear();
             //刷新模型列表
-            ClientModelManager.AUTHED_MODELS.stream().filter((modelId) -> StringUtil.isNullOrEmpty(keyward) || modelId.contains(keyward)).map((modelId) -> new ModelEntry(modelId, () -> EFMMMeshes.MESHES.get(modelId)))
+            ClientModelManager.AUTHED_MODELS.stream().filter((modelId) -> StringUtil.isNullOrEmpty(keyward) || modelId.contains(keyward)).map((modelId) -> new ModelEntry(modelId, () -> ClientModelManager.getOrRequestMesh(modelId)))
                     .sorted(Comparator.comparing(entry$ -> entry$.modelId)).forEach(this::addEntry);
         }
 

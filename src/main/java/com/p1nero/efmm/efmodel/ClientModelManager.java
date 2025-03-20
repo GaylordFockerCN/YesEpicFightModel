@@ -1,7 +1,5 @@
 package com.p1nero.efmm.efmodel;
 
-import com.google.common.collect.BiMap;
-import com.google.common.collect.HashBiMap;
 import com.google.gson.JsonObject;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.logging.LogUtils;
@@ -18,6 +16,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import yesman.epicfight.api.client.model.AnimatedMesh;
 import yesman.epicfight.api.client.model.Meshes;
@@ -138,6 +137,16 @@ public class ClientModelManager {
             }
         }
         return Meshes.BIPED;
+    }
+
+    @Nullable
+    public static AnimatedMesh getOrRequestMesh(String modelId){
+        if(EFMMMeshes.MESHES.containsKey(modelId)){
+            return EFMMMeshes.MESHES.get(modelId);
+        } else {
+            sendRequestModelPacket(modelId);
+        }
+        return null;
     }
 
     public static void sendRequestModelPacket(String modelId){
