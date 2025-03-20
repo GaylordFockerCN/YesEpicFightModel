@@ -14,12 +14,41 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
 
 public class EFMMCommand {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+
+        dispatcher.register(Commands.literal("efmm")
+                .then(Commands.literal("uploadWhiteList").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
+                        .then(Commands.argument("players", EntityArgument.players())
+                                .then(Commands.literal("add")
+                                        .executes((commandContext -> {
+                                            for (ServerPlayer player : EntityArgument.getPlayers(commandContext, "entities")) {
+                                                LogicServerModelManager.UPLOAD_WHITE_LIST.add(player.getUUID());
+                                                player.displayClientMessage(Component.translatable("tip.efmm.can_upload_now"), false);
+                                                LOGGER.info("Add {} to upload white list", player.getDisplayName().getString());
+                                            }
+                                            return 0;
+                                        }))
+                                )
+                                .then(Commands.literal("remove")
+                                        .executes((commandContext -> {
+                                            for (ServerPlayer player : EntityArgument.getPlayers(commandContext, "entities")) {
+                                                LogicServerModelManager.UPLOAD_WHITE_LIST.remove(player.getUUID());
+                                                player.displayClientMessage(Component.translatable("tip.efmm.can_not_upload_now"), false);
+                                                LOGGER.info("Remove {} from upload white list", player.getDisplayName().getString());
+                                            }
+                                            return 0;
+                                        }))
+                                )
+
+                        )
+                )
+        );
 
         dispatcher.register(Commands.literal("authEFModel").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
                 .then(Commands.argument("entities", EntityArgument.entities())

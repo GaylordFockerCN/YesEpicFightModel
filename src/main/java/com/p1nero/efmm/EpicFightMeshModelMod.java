@@ -8,6 +8,7 @@ import com.p1nero.efmm.gameasstes.EFMMMeshes;
 import com.p1nero.efmm.network.PacketHandler;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
@@ -33,6 +34,7 @@ public class EpicFightMeshModelMod {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::buildMesh);
+        MinecraftForge.EVENT_BUS.addListener(this::onClientTick);
         MinecraftForge.EVENT_BUS.addListener(this::onServerStart);
         MinecraftForge.EVENT_BUS.addListener(this::onServerStop);
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
@@ -59,10 +61,16 @@ public class EpicFightMeshModelMod {
     private void onServerStart(ServerStartedEvent event) {
         LogicServerModelManager.loadAllModels();
         LogicServerModelManager.loadAllowedModels();
+        LogicServerModelManager.loadUploadWhiteList();
+    }
+
+    private void onClientTick(TickEvent.ClientTickEvent event) {
+        LogicServerModelManager.clientTick();
     }
 
     private void onServerStop(ServerStoppedEvent event) {
         LogicServerModelManager.saveAllowedModels();
+        LogicServerModelManager.saveUploadWhiteList();
     }
 
     private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event){

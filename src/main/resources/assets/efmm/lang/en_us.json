@@ -22,5 +22,8 @@
   "tip.efmm.model_to_large": "Model [%s] is out of limit! Check config to modify the limitation.",
   "tip.efmm.model_to_large_server": "Model [%s] is out of this server's limit! Server rejected your model.",
   "tip.efmm.model_already_exist": "Model [%s] already exist in server!",
-  "tip.efmm.failed_to_send_model_to_server": "Failed to send! Error:"
+  "tip.efmm.failed_to_send_model_to_server": "Failed to send! Error:",
+  "tip.efmm.sender_no_permission": "You have no permission to send model!",
+  "tip.efmm.can_upload_now": "Now you can upload model!",
+  "tip.efmm.can_not_upload_now": "Now you can't upload model!"
 }

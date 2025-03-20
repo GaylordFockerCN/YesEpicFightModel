@@ -28,27 +28,41 @@ import yesman.epicfight.model.armature.HumanoidArmature;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
-
-import static net.minecraft.util.datafix.fixes.BlockEntitySignTextStrictJsonFix.GSON;
 
 public class LogicServerModelManager {
     public static final Map<UUID, Set<String>> ALLOWED_MODELS = new HashMap<>();
     public static final Set<String> NATIVE_MODELS = new HashSet<>();
+    public static final Set<UUID> UPLOAD_WHITE_LIST = new HashSet<>();
     public static final Map<String, ModelConfig> ALL_MODELS = new HashMap<>();
     public static final Map<UUID, String> ENTITY_MODEL_MAP = new HashMap<>();
-
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     public static final Path EFMM_CONFIG_PATH = FMLPaths.CONFIGDIR.get().resolve("efmm");
+    private static final Path WHITE_LIST_PATH = EFMM_CONFIG_PATH.resolve("white_list.json");
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    private static final int MAX_SEND_COOLDOWN = 600;
+
+    private static int sendTimer;
 
     /**
      * 接受客户端发送的模型
      */
     public static void registerModel(ServerPlayer sender, String modelId, JsonObject modelJson, JsonObject configJson, byte[] imageCache) {
+
+        if(!UPLOAD_WHITE_LIST.contains(sender.getUUID())){
+            sender.displayClientMessage(Component.translatable("tip.efmm.sender_no_permission"), false);
+            LOGGER.info("Sender don't have permission!");
+            return;
+        }
+
         if(ALL_MODELS.containsKey(modelId)){
             sender.displayClientMessage(Component.translatable("tip.efmm.model_already_exist", modelId), false);
             LOGGER.info("Model already exist \"{}\" in server!", modelId);
@@ -79,6 +93,7 @@ public class LogicServerModelManager {
         EFMMArmatures.ARMATURES.put(modelId, modelLoader.loadArmature(HumanoidArmature::new));
         EFMMJsonModelLoader modelConfigLoader = new EFMMJsonModelLoader(configJson);
         ALL_MODELS.put(modelId, modelConfigLoader.loadModelConfig());
+        authModelFor(sender, modelId);//自动授权给发送者
         LOGGER.info("Registered new model \"{}\" from client.", modelId);
     }
 
@@ -118,7 +133,8 @@ public class LogicServerModelManager {
     @OnlyIn(Dist.CLIENT)
     public static void sendModelToServer(String modelId) throws IOException{
         if(NATIVE_MODELS.contains(modelId)){
-            if(Minecraft.getInstance().player != null){
+            if(Minecraft.getInstance().player != null && sendTimer == 0){
+                sendTimer = MAX_SEND_COOLDOWN;
                 Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.model_already_exist", modelId), false);
             }
         }
@@ -202,6 +218,42 @@ public class LogicServerModelManager {
         }
         ModelConfig config = ALL_MODELS.get(ENTITY_MODEL_MAP.get(entity.getUUID()));
         return new Vec3f(config.scaleX(), config.scaleY(), config.scaleZ());
+    }
+
+    public static void saveUploadWhiteList() {
+        try {
+            List<String> uuidStrings = UPLOAD_WHITE_LIST.stream()
+                    .map(UUID::toString)
+                    .collect(Collectors.toList());
+
+            try (Writer writer = Files.newBufferedWriter(WHITE_LIST_PATH)) {
+                GSON.toJson(uuidStrings, writer);
+            }
+            LOGGER.info("Saved {} UUIDs to whitelist", UPLOAD_WHITE_LIST.size());
+        } catch (IOException e) {
+            LOGGER.error("Failed to save upload whitelist", e);
+        }
+    }
+
+    public static void loadUploadWhiteList() {
+        UPLOAD_WHITE_LIST.clear();
+        if (!Files.exists(WHITE_LIST_PATH)) {
+            return;
+        }
+        try (Reader reader = Files.newBufferedReader(WHITE_LIST_PATH)) {
+            JsonArray uuidArray = GSON.fromJson(reader, JsonArray.class);
+            for (JsonElement element : uuidArray) {
+                try {
+                    UUID uuid = UUID.fromString(element.getAsString());
+                    UPLOAD_WHITE_LIST.add(uuid);
+                } catch (IllegalArgumentException e) {
+                    LOGGER.error("Invalid UUID format in white list: {}", element.getAsString());
+                }
+            }
+            LOGGER.info("Loaded {} UUIDs from whitelist", UPLOAD_WHITE_LIST.size());
+        } catch (IOException | JsonParseException e) {
+            LOGGER.error("Failed to load upload whitelist", e);
+        }
     }
 
     public static void saveAllowedModels() {
@@ -326,5 +378,11 @@ public class LogicServerModelManager {
     public static void reloadEFModels() {
         clearModels();
         loadAllModels();
+    }
+
+    public static void clientTick() {
+        if(sendTimer > 0){
+            sendTimer--;
+        }
     }
 }
