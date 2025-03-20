@@ -3,6 +3,7 @@ package com.p1nero.efmm.efmodel;
 import com.google.gson.JsonObject;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.logging.LogUtils;
+import com.p1nero.efmm.EFMMConfig;
 import com.p1nero.efmm.data.EFMMJsonModelLoader;
 import com.p1nero.efmm.data.ModelConfig;
 import com.p1nero.efmm.gameasstes.EFMMArmatures;
@@ -12,6 +13,7 @@ import com.p1nero.efmm.network.PacketRelay;
 import com.p1nero.efmm.network.packet.RequestSyncModelPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
@@ -32,6 +34,7 @@ import java.util.regex.Pattern;
 
 public class ClientModelManager {
     public static final Set<String> AUTHED_MODELS = new HashSet<>();
+    public static final Set<String> MODELS_BLACK_LIST = new HashSet<>();
     public static final Map<String, ModelConfig> ALL_MODELS = new HashMap<>();
     public static final Map<String, ResourceLocation> TEXTURE_CACHE = new HashMap<>();
     public static final Map<UUID, String> ENTITY_MODEL_MAP = new HashMap<>();
@@ -46,8 +49,18 @@ public class ClientModelManager {
     @OnlyIn(Dist.CLIENT)
     public static void registerModel(String modelId, JsonObject modelJson, JsonObject configJson, byte[] imageCache) {
         EFMMJsonModelLoader modelLoader = new EFMMJsonModelLoader(modelJson);
+        HumanoidMesh mesh = modelLoader.loadAnimatedMesh(HumanoidMesh::new);
+        if(modelLoader.getPositionCountAfterLoadMesh() <= EFMMConfig.MAX_POSITIONS_COUNT.get()){
+            EFMMMeshes.MESHES.put(modelId, mesh);
+        } else {
+            MODELS_BLACK_LIST.add(modelId);
+            if(Minecraft.getInstance().player != null){
+                Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.model_to_large", modelId), false);
+            }
+            LOGGER.info("Received a too large model \"{}\" from server! Skipped.", modelId);
+            return;
+        }
         EFMMArmatures.ARMATURES.put(modelId, modelLoader.loadArmature(HumanoidArmature::new));
-        EFMMMeshes.MESHES.put(modelId, modelLoader.loadAnimatedMesh(HumanoidMesh::new));
         EFMMJsonModelLoader modelConfigLoader = new EFMMJsonModelLoader(configJson);
         ResourceLocation textureId = new ResourceLocation("efmm_texture_cache", INVALID_CHARS_PATTERN.matcher(modelId.toLowerCase(Locale.ROOT)).replaceAll(""));
         try (ByteArrayInputStream bis = new ByteArrayInputStream(imageCache)) {
@@ -149,7 +162,19 @@ public class ClientModelManager {
         return null;
     }
 
+    public static ModelConfig getOrRequestModelConfig(String modelId){
+        if(ALL_MODELS.containsKey(modelId)){
+            return ALL_MODELS.get(modelId);
+        } else {
+            sendRequestModelPacket(modelId);
+        }
+        return ModelConfig.getDefault();
+    }
+
     public static void sendRequestModelPacket(String modelId){
+        if(MODELS_BLACK_LIST.contains(modelId)){
+            return;
+        }
         if(requestDelayTimer > 0){
             requestDelayTimer--;
         } else {

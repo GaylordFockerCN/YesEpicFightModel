@@ -11,5 +11,16 @@
   "tip.efmm.reset_model": "Reset model for ",
   "gui.efmm.select.models": "Select EF Model Screen",
   "key.categories.efmm": "Yes Epic Fight Model Keys",
-  "key.efmm.open_select_screen": "Open Select Model Screen"
+  "key.efmm.open_select_screen": "Open Select Model Screen",
+  "tip.efmm.author_name": "Author:",
+  "button.efmm.reset_model": "Reset Model",
+  "button.efmm.upload_model": "Upload Model",
+  "tip.efmm.sure_to_send": "Are you sure to send this model?",
+  "tip.efmm.please_select": "Please select a model from the list",
+  "tip.efmm.select_ef_model.keyword": "Keyword",
+  "tip.efmm.select_model_to_upload": "Choose A Model To Upload",
+  "tip.efmm.model_to_large": "Model [%s] is out of limit! Check config to modify the limitation.",
+  "tip.efmm.model_to_large_server": "Model [%s] is out of this server's limit! Server rejected your model.",
+  "tip.efmm.model_already_exist": "Model [%s] already exist in server!",
+  "tip.efmm.failed_to_send_model_to_server": "Failed to send! Error:"
 }

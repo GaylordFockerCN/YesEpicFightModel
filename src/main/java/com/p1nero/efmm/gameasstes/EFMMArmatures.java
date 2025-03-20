@@ -15,7 +15,7 @@ public class EFMMArmatures {
     public static final BiMap<String, Armature> ARMATURES = HashBiMap.create();
 
     public static void loadNativeArmatures(){
-        addArmature(new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"), HumanoidArmature::new);
+        addArmature("Anon Chihaya", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"), HumanoidArmature::new);
     }
 
     public static void reloadArmatures(){
@@ -23,8 +23,8 @@ public class EFMMArmatures {
         loadNativeArmatures();
     }
 
-    public static <A extends Armature> void addArmature(ResourceLocation resourceLocation, Armatures.ArmatureContructor<A> constructor) {
-        ARMATURES.computeIfAbsent(resourceLocation.toString(), (key) -> {
+    public static <A extends Armature> void addArmature(String modelId, ResourceLocation resourceLocation, Armatures.ArmatureContructor<A> constructor) {
+        ARMATURES.computeIfAbsent(modelId, (key) -> {
             EFMMJsonModelLoader jsonModelLoader;
             jsonModelLoader = new EFMMJsonModelLoader(Armatures.wrapLocation(resourceLocation));
             return jsonModelLoader.loadArmature(constructor);

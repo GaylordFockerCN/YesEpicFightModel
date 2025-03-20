@@ -6,8 +6,10 @@ import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonReader;
 import com.mojang.logging.LogUtils;
 import com.p1nero.efmm.efmodel.ClientModelManager;
+import com.p1nero.efmm.efmodel.LogicServerModelManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
 
@@ -18,7 +20,7 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-public record RegisterModelPacketPacket(String modelId, JsonObject modelJsonCache, JsonObject configJsonCache, byte[] imageCache) implements BasePacket {
+public record RegisterModelPacket(String modelId, JsonObject modelJsonCache, JsonObject configJsonCache, byte[] imageCache) implements BasePacket {
     private static final Logger LOGGER = LogUtils.getLogger();
     @Override
     public void encode(FriendlyByteBuf buf) {
@@ -47,7 +49,7 @@ public record RegisterModelPacketPacket(String modelId, JsonObject modelJsonCach
         }
     }
 
-    public static RegisterModelPacketPacket decode(FriendlyByteBuf buf) {
+    public static RegisterModelPacket decode(FriendlyByteBuf buf) {
         String modelId = buf.readUtf();
 
         byte[] modelJsonBytes = readSegmentedData(buf);
@@ -57,7 +59,7 @@ public record RegisterModelPacketPacket(String modelId, JsonObject modelJsonCach
         JsonObject configJson = parseJson(new String(configJsonBytes, StandardCharsets.UTF_8));
 
         byte[] imageCache = readSegmentedData(buf);
-        return new RegisterModelPacketPacket(modelId, modelJson, configJson, imageCache);
+        return new RegisterModelPacket(modelId, modelJson, configJson, imageCache);
     }
 
     private static byte[] readSegmentedData(FriendlyByteBuf buf) {
@@ -83,8 +85,12 @@ public record RegisterModelPacketPacket(String modelId, JsonObject modelJsonCach
 
     @Override
     public void execute(@Nullable Player player) {
-        if(Minecraft.getInstance().player != null && Minecraft.getInstance().level != null){
-            ClientModelManager.registerModel(modelId, modelJsonCache, configJsonCache, imageCache);
+        if(player instanceof ServerPlayer serverPlayer) {
+            LogicServerModelManager.registerModel(serverPlayer, modelId, modelJsonCache, configJsonCache, imageCache);
+        } else {
+            if(Minecraft.getInstance().player != null && Minecraft.getInstance().level != null){
+                ClientModelManager.registerModel(modelId, modelJsonCache, configJsonCache, imageCache);
+            }
         }
     }
 

@@ -1,7 +1,7 @@
 package com.p1nero.efmm.network.packet;
 
 import com.mojang.logging.LogUtils;
-import com.p1nero.efmm.efmodel.ServerModelManager;
+import com.p1nero.efmm.efmodel.LogicServerModelManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -25,7 +25,7 @@ public record RequestSyncModelPacket(String modelId) implements BasePacket {
     public void execute(@Nullable Player player) {
         if(player instanceof ServerPlayer serverPlayer){
             try {
-                ServerModelManager.sendModelTo(serverPlayer, modelId);
+                LogicServerModelManager.sendModelTo(serverPlayer, modelId);
             } catch (IOException e){
                 LOGGER.error("Failed to send model!", e);
             }

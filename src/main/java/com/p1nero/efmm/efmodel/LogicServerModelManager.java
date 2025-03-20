@@ -1,9 +1,8 @@
 package com.p1nero.efmm.efmodel;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import com.mojang.logging.LogUtils;
+import com.p1nero.efmm.EFMMConfig;
 import com.p1nero.efmm.data.EFMMJsonModelLoader;
 import com.p1nero.efmm.data.ModelConfig;
 import com.p1nero.efmm.gameasstes.EFMMArmatures;
@@ -11,10 +10,14 @@ import com.p1nero.efmm.network.PacketHandler;
 import com.p1nero.efmm.network.PacketRelay;
 import com.p1nero.efmm.network.packet.AuthModelPacket;
 import com.p1nero.efmm.network.packet.BindModelPacket;
-import com.p1nero.efmm.network.packet.RegisterModelPacketPacket;
+import com.p1nero.efmm.network.packet.RegisterModelPacket;
+import com.p1nero.efmm.network.packet.ResetClientModelPacket;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.fml.loading.FMLPaths;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -33,7 +36,7 @@ import java.util.stream.Stream;
 
 import static net.minecraft.util.datafix.fixes.BlockEntitySignTextStrictJsonFix.GSON;
 
-public class ServerModelManager {
+public class LogicServerModelManager {
     public static final Map<UUID, Set<String>> ALLOWED_MODELS = new HashMap<>();
     public static final Set<String> NATIVE_MODELS = new HashSet<>();
     public static final Map<String, ModelConfig> ALL_MODELS = new HashMap<>();
@@ -41,6 +44,43 @@ public class ServerModelManager {
 
     public static final Path EFMM_CONFIG_PATH = FMLPaths.CONFIGDIR.get().resolve("efmm");
     private static final Logger LOGGER = LogUtils.getLogger();
+
+    /**
+     * 接受客户端发送的模型
+     */
+    public static void registerModel(ServerPlayer sender, String modelId, JsonObject modelJson, JsonObject configJson, byte[] imageCache) {
+        if(ALL_MODELS.containsKey(modelId)){
+            sender.displayClientMessage(Component.translatable("tip.efmm.model_already_exist", modelId), false);
+            LOGGER.info("Model already exist \"{}\" in server!", modelId);
+            return;
+        }
+
+        EFMMJsonModelLoader modelLoader = new EFMMJsonModelLoader(modelJson);
+        if(modelLoader.getPositionsCountFromJson() > EFMMConfig.MAX_POSITIONS_COUNT.get()){
+            if(Minecraft.getInstance().player != null){
+                sender.displayClientMessage(Component.translatable("tip.efmm.model_to_large_server", modelId), false);
+            }
+            LOGGER.info("Received a too large model \"{}\" from client! Skipped.", modelId);
+            return;
+        }
+
+        try  {
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            Path mainJsonPath = EFMM_CONFIG_PATH.resolve("main.json");
+            Files.writeString(mainJsonPath, gson.toJson(modelJson));
+            Path configJsonPath = EFMM_CONFIG_PATH.resolve("config.json");
+            Files.writeString(configJsonPath, gson.toJson(configJson));
+            Path texturePath = EFMM_CONFIG_PATH.resolve("texture.png");
+            Files.write(texturePath, imageCache);
+        } catch (Exception e) {
+            LOGGER.error("Failed to save image data for model {}", modelId, e);
+        }
+
+        EFMMArmatures.ARMATURES.put(modelId, modelLoader.loadArmature(HumanoidArmature::new));
+        EFMMJsonModelLoader modelConfigLoader = new EFMMJsonModelLoader(configJson);
+        ALL_MODELS.put(modelId, modelConfigLoader.loadModelConfig());
+        LOGGER.info("Registered new model \"{}\" from client.", modelId);
+    }
 
     public static Set<String> getOrCreateAllowedModelsFor(Entity player) {
         return ALLOWED_MODELS.computeIfAbsent(player.getUUID(), uuid -> new HashSet<>());
@@ -71,8 +111,19 @@ public class ServerModelManager {
     }
 
     public static void sendModelTo(ServerPlayer serverPlayer, String modelId) throws IOException {
-        PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new RegisterModelPacketPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
+        PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
         LOGGER.info("Send model \"{}\" to {}", modelId, serverPlayer.getDisplayName().getString());
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public static void sendModelToServer(String modelId) throws IOException{
+        if(NATIVE_MODELS.contains(modelId)){
+            if(Minecraft.getInstance().player != null){
+                Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.model_already_exist", modelId), false);
+            }
+        }
+        PacketRelay.sendToServer(PacketHandler.INSTANCE, new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)));
+        LOGGER.info("Send model \"{}\" to server", modelId);
     }
 
     public static void authAllModelFor(Entity player) {
@@ -118,6 +169,13 @@ public class ServerModelManager {
         }
     }
 
+    public static void removeModelForSync(@Nullable ServerPlayer caster, Entity entity) {
+        removeModelFor(entity);
+        PacketRelay.sendToAll(PacketHandler.INSTANCE, new ResetClientModelPacket(entity.getId()));
+        if(caster != null){
+            caster.displayClientMessage(Component.translatable("tip.efmm.reset_model").append(entity.getDisplayName()), false);
+        }
+    }
 
     public static void removeModelFor(Entity entity) {
         ENTITY_MODEL_MAP.remove(entity.getUUID());
@@ -202,6 +260,11 @@ public class ServerModelManager {
                 Set<String> models = new HashSet<>();
                 for (JsonElement element : jsonArray) {
                     if (element.isJsonPrimitive()) {
+                        String modelId = element.getAsString();
+                        if(!ALL_MODELS.containsKey(modelId)){
+                            LOGGER.error("Model [{}] doesn't exist! skipped", modelId);
+                            continue;
+                        }
                         models.add(element.getAsString());
                     } else {
                         LOGGER.error("Invalid value in UUID: {}, skipped", uuid);

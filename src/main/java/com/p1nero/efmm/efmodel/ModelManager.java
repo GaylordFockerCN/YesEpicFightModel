@@ -15,9 +15,9 @@ public class ModelManager {
 
     public static void loadNative(){
         EFMMArmatures.loadNativeArmatures();
-        loadNativeModelConfig(ServerModelManager.ALL_MODELS, new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
-        loadNativeModelConfig(ClientModelManager.ALL_MODELS, new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
-        ServerModelManager.NATIVE_MODELS.add(EpicFightMeshModelMod.MOD_ID + ":entity/anon");
+        loadNativeModelConfig("Anon Chihaya", LogicServerModelManager.ALL_MODELS, new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
+        loadNativeModelConfig("Anon Chihaya", ClientModelManager.ALL_MODELS, new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
+        LogicServerModelManager.NATIVE_MODELS.add("Anon Chihaya");
     }
 
     public static boolean hasArmature(Entity entity){
@@ -27,7 +27,7 @@ public class ModelManager {
         if(entity.level().isClientSide){
             return ClientModelManager.hasArmature(entity);
         } else {
-            return ServerModelManager.hasArmature(entity);
+            return LogicServerModelManager.hasArmature(entity);
         }
     }
 
@@ -35,7 +35,7 @@ public class ModelManager {
         if(entity.level().isClientSide){
             return ClientModelManager.getArmatureFor(entity);
         } else {
-            return ServerModelManager.getArmatureFor(entity);
+            return LogicServerModelManager.getArmatureFor(entity);
         }
     }
 
@@ -43,12 +43,12 @@ public class ModelManager {
         if(entity.level().isClientSide){
             return ClientModelManager.getScaleFor(entity);
         } else {
-            return ServerModelManager.getScaleFor(entity);
+            return LogicServerModelManager.getScaleFor(entity);
         }
     }
 
-    public static void loadNativeModelConfig(Map<String, ModelConfig> allModels, ResourceLocation resourceLocation) {
-        allModels.computeIfAbsent(resourceLocation.toString(), (key) -> {
+    public static void loadNativeModelConfig(String modelId, Map<String, ModelConfig> allModels, ResourceLocation resourceLocation) {
+        allModels.computeIfAbsent(modelId, (key) -> {
             EFMMJsonModelLoader jsonModelLoader;
             jsonModelLoader = new EFMMJsonModelLoader(wrapConfigLocation(resourceLocation));
             return jsonModelLoader.loadModelConfig();

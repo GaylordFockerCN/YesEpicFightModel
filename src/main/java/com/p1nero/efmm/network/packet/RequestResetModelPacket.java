@@ -7,20 +7,18 @@ import net.minecraft.world.entity.player.Player;
 
 import javax.annotation.Nullable;
 
-public record RequestBindModelPacket(String modelId) implements BasePacket {
+public record RequestResetModelPacket() implements BasePacket {
     @Override
-    public void encode(FriendlyByteBuf buf) {
-        buf.writeUtf(modelId);
-    }
+    public void encode(FriendlyByteBuf buf) {}
 
-    public static RequestBindModelPacket decode(FriendlyByteBuf buf) {
-        return new RequestBindModelPacket(buf.readUtf());
+    public static RequestResetModelPacket decode(FriendlyByteBuf buf) {
+        return new RequestResetModelPacket();
     }
 
     @Override
     public void execute(@Nullable Player player) {
         if(player instanceof ServerPlayer serverPlayer){
-            LogicServerModelManager.bindModelSync(serverPlayer, serverPlayer, modelId);
+            LogicServerModelManager.removeModelForSync(serverPlayer, serverPlayer);
         }
     }
 

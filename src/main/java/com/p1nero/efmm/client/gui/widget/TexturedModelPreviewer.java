@@ -3,7 +3,9 @@ package com.p1nero.efmm.client.gui.widget;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
@@ -82,6 +84,7 @@ import yesman.epicfight.world.damagesource.StunType;
 
 @OnlyIn(Dist.CLIENT)
 public class TexturedModelPreviewer extends AbstractWidget implements ResizableComponent {
+    private Supplier<String> authorName = null;
     private NoEntityAnimator animator;
     private final ModelRenderTarget modelRenderTarget;
     private final List<StaticAnimation> animationsToPlay = Lists.newArrayList();
@@ -89,7 +92,7 @@ public class TexturedModelPreviewer extends AbstractWidget implements ResizableC
     private final CheckBox showColliderCheckbox = new CheckBox(Minecraft.getInstance().font, 0, 60, 0, 10, null, null, true, Component.translatable("datapack_edit.model_player.collider"), null);
     private final CheckBox showItemCheckbox = new CheckBox(Minecraft.getInstance().font, 0, 40, 0, 10, null, null, true, Component.translatable("datapack_edit.model_player.item"), null);
     private final CheckBox showTrailCheckbox = new CheckBox(Minecraft.getInstance().font, 0, 40, 0, 10, null, null, true, Component.translatable("datapack_edit.model_player.trail"), null);
-    private double zoom = -3.0D;
+    private double zoom = -5.0D;
     private float xRot = 0.0F;
     private float yRot = 180.0F;
     private float xMove = 0.0F;
@@ -124,6 +127,14 @@ public class TexturedModelPreviewer extends AbstractWidget implements ResizableC
 
         this.modelRenderTarget.setClearColor(0.1552F, 0.1552F, 0.1552F, 1.0F);
         this.modelRenderTarget.clear(Minecraft.ON_OSX);
+    }
+
+    public void setAuthorName(Supplier<String> authorName) {
+        this.authorName = authorName;
+    }
+
+    public String getAuthorName() {
+        return authorName == null ? "" : authorName.get();
     }
 
     public void setArmature(Armature armature) {
@@ -293,6 +304,13 @@ public class TexturedModelPreviewer extends AbstractWidget implements ResizableC
 
         this.modelRenderTarget.clear(true);
         this.modelRenderTarget.bindWrite(true);
+
+        if(!this.getAuthorName().isEmpty()){
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().scale(2.0F, 1.0F, 1.0F);
+            guiGraphics.drawString(Minecraft.getInstance().font, Component.translatable("tip.efmm.author_name").append(Component.literal(authorName.get())).withStyle(ChatFormatting.BOLD), this._getX(), this._getY() - 25, 16777215, true);
+            guiGraphics.pose().popPose();
+        }
 
         if(this.getMesh() != null && this.getMesh().get() != null){
             if (this.animator != null && getTextureLocation() != null) {

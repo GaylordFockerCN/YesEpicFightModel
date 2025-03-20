@@ -11,5 +11,16 @@
   "tip.efmm.reset_model": "重置模型 从 ",
   "gui.efmm.select.models": "史诗战斗模型选择窗口",
   "key.categories.efmm": "是！史诗战斗模组 键位",
-  "key.efmm.open_select_screen": "打开模型选择窗口"
+  "key.efmm.open_select_screen": "打开模型选择窗口",
+  "tip.efmm.author_name": "模型作者：",
+  "button.efmm.reset_model": "重置模型",
+  "button.efmm.upload_model": "上传模型",
+  "tip.efmm.sure_to_send": "您确定上传此模型？",
+  "tip.efmm.please_select": "请从列表中选择一个模型",
+  "tip.efmm.select_ef_model.keyword": "请输入关键字",
+  "tip.efmm.select_model_to_upload": "请选择要上传的模型",
+  "tip.efmm.model_to_large": "模型 [%s] 超出限制！请检查配置文件以修改限制大小。",
+  "tip.efmm.model_to_large_server": "模型 [%s] 超出服务器限制！服务器拒绝了你的模型。",
+  "tip.efmm.model_already_exist": "服务器已存在模型 [%s] ！",
+  "tip.efmm.failed_to_send_model_to_server": "发送失败！错误："
 }

@@ -46,6 +46,8 @@ public class EFMMJsonModelLoader {
     private String name = "";
     private static final Logger LOGGER = LogUtils.getLogger();
 
+    private int positionCount = 0;
+
     public EFMMJsonModelLoader(ResourceLocation resourceLocation) throws IllegalStateException {
         JsonReader jsonReader;
 
@@ -169,7 +171,7 @@ public class EFMMJsonModelLoader {
         JsonObject indices = obj.getAsJsonObject("indices");
 
         float[] positionArray = ParseUtil.toFloatArray(positions.get("array").getAsJsonArray());
-
+        positionCount = positions.get("count").getAsInt();
         for (int i = 0; i < positionArray.length / 3; i++) {
             int k = i * 3;
             Vec4f posVector = new Vec4f(positionArray[k], positionArray[k+1], positionArray[k+2], 1.0F);
@@ -212,20 +214,26 @@ public class EFMMJsonModelLoader {
         return constructor.invoke(arrayMap, meshMap, null, this.getRenderProperties());
     }
 
+    public int getPositionsCountFromJson(){
+        JsonObject obj = this.rootJson.getAsJsonObject("vertices");
+        JsonObject positions = obj.getAsJsonObject("positions");
+        return positions.get("count").getAsInt();
+    }
+
     @OnlyIn(Dist.CLIENT)
     public <T extends AnimatedMesh> T loadAnimatedMesh(MeshContructor<AnimatedModelPart, AnimatedVertexBuilder, T> constructor) {
-        ResourceLocation parent = this.getParent();
         JsonObject obj = this.rootJson.getAsJsonObject("vertices");
         JsonObject positions = obj.getAsJsonObject("positions");
         JsonObject normals = obj.getAsJsonObject("normals");
         JsonObject uvs = obj.getAsJsonObject("uvs");
-        JsonObject vdincies = obj.getAsJsonObject("vindices");
+        JsonObject vindices = obj.getAsJsonObject("vindices");
         JsonObject weights = obj.getAsJsonObject("weights");
         JsonObject vcounts = obj.getAsJsonObject("vcounts");
         JsonObject parts = obj.getAsJsonObject("parts");
         JsonObject indices = obj.getAsJsonObject("indices");
 
         float[] positionArray = ParseUtil.toFloatArray(positions.get("array").getAsJsonArray());
+        positionCount = positions.get("count").getAsInt();
 
         for (int i = 0; i < positionArray.length / 3; i++) {
             int k = i * 3;
@@ -248,7 +256,7 @@ public class EFMMJsonModelLoader {
         }
 
         float[] uvArray = ParseUtil.toFloatArray(uvs.get("array").getAsJsonArray());
-        int[] animationIndexArray = ParseUtil.toIntArray(vdincies.get("array").getAsJsonArray());
+        int[] animationIndexArray = ParseUtil.toIntArray(vindices.get("array").getAsJsonArray());
         float[] weightArray = ParseUtil.toFloatArray(weights.get("array").getAsJsonArray());
         int[] vcountArray = ParseUtil.toIntArray(vcounts.get("array").getAsJsonArray());
 
@@ -273,8 +281,16 @@ public class EFMMJsonModelLoader {
         return constructor.invoke(arrayMap, meshMap, null, this.getRenderProperties());
     }
 
+    public int getPositionCountAfterLoadMesh() {
+        return positionCount;
+    }
+
     public ModelConfig loadModelConfig(){
+        if(!this.rootJson.has("author")){
+            throw new IllegalArgumentException("Model author is null!");
+        }
         return new ModelConfig(
+                this.rootJson.get("author").getAsString(),
                 this.rootJson.get("scaleX").getAsFloat(),
                 this.rootJson.get("scaleY").getAsFloat(),
                 this.rootJson.get("scaleZ").getAsFloat());
