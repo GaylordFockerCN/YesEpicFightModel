@@ -6,13 +6,13 @@ import com.google.gson.JsonParser;
 import com.google.gson.stream.JsonReader;
 import com.mojang.logging.LogUtils;
 import com.p1nero.efmm.efmodel.ClientModelManager;
-import com.p1nero.efmm.efmodel.LogicServerModelManager;
+import com.p1nero.efmm.efmodel.ServerModelManager;
 import net.minecraft.client.Minecraft;
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.PacketListener;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.Packet;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -24,7 +24,7 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-public class RegisterModelPacket implements BasePacket {
+public class RegisterModelPacket implements Packet<PacketListener> {
     private final String modelId;
     private JsonObject modelJsonCache, configJsonCache;
     private final byte[] imageCache;
@@ -48,7 +48,7 @@ public class RegisterModelPacket implements BasePacket {
     }
 
     @Override
-    public void encode(FriendlyByteBuf buf) {
+    public void write(FriendlyByteBuf buf) {
         buf.writeUtf(modelId);
 
         byte[] modelJsonBytes = modelJsonCache.toString().getBytes(StandardCharsets.UTF_8);
@@ -61,7 +61,7 @@ public class RegisterModelPacket implements BasePacket {
     }
 
     private void writeSegmentedData(FriendlyByteBuf buf, byte[] data) {
-        int segmentSize = 32768; // 天道禁锢
+        int segmentSize = 32768 - 20; // 天道禁锢，但仅单人
         int totalSegments = (data.length + segmentSize - 1) / segmentSize; // 计算总段数
 
         buf.writeInt(totalSegments);
@@ -104,12 +104,16 @@ public class RegisterModelPacket implements BasePacket {
     }
 
     @Override
+    public void handle(@NotNull PacketListener packetListener) {
+
+    }
+
     public void execute(@Nullable Player player) {
         if(player instanceof ServerPlayer serverPlayer) {
-            if(LogicServerModelManager.UPLOAD_WHITE_LIST.contains(serverPlayer.getUUID())){
+            if(ServerModelManager.UPLOAD_WHITE_LIST.contains(serverPlayer.getUUID())){
                 JsonObject modelJson = parseJson(new String(modelJsonBytes, StandardCharsets.UTF_8));
                 JsonObject configJson = parseJson(new String(configJsonBytes, StandardCharsets.UTF_8));
-                LogicServerModelManager.registerModel(serverPlayer, modelId, modelJson, configJson, imageCache);
+                ServerModelManager.registerModel(serverPlayer, modelId, modelJson, configJson, imageCache);
             } else {
                 serverPlayer.displayClientMessage(Component.translatable("tip.efmm.sender_no_permission"), false);
                 LOGGER.info("Sender don't have permission!");
@@ -118,7 +122,7 @@ public class RegisterModelPacket implements BasePacket {
             if(Minecraft.getInstance().player != null && Minecraft.getInstance().level != null){
                 JsonObject modelJson = parseJson(new String(modelJsonBytes, StandardCharsets.UTF_8));
                 JsonObject configJson = parseJson(new String(configJsonBytes, StandardCharsets.UTF_8));
-                ClientModelManager.registerModel(modelId, modelJson, configJson, imageCache);
+                ClientModelManager.registerModelFromServer(modelId, modelJson, configJson, imageCache);
             }
         }
     }

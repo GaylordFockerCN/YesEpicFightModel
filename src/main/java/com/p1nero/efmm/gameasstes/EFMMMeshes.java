@@ -7,19 +7,27 @@ import com.p1nero.efmm.EpicFightMeshModelMod;
 import com.p1nero.efmm.data.EFMMJsonModelLoader;
 import com.p1nero.efmm.efmodel.ClientModelManager;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 import yesman.epicfight.api.client.model.AnimatedMesh;
 import yesman.epicfight.api.client.model.AnimatedVertexBuilder;
 import yesman.epicfight.api.client.model.Meshes;
+import yesman.epicfight.api.forgeevent.ModelBuildEvent;
 import yesman.epicfight.client.mesh.HumanoidMesh;
 
+@OnlyIn(Dist.CLIENT)
+@Mod.EventBusSubscriber(modid = EpicFightMeshModelMod.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 @SuppressWarnings("unchecked")
 public class EFMMMeshes {
 
     public static final BiMap<String, AnimatedMesh> MESHES = HashBiMap.create();
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public static void loadNativeMeshes() {
+    @SubscribeEvent
+    public static void loadNativeMeshes(ModelBuildEvent.MeshBuild event) {
         getOrCreateAnimatedMesh("Anon Chihaya", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"), HumanoidMesh::new);
         ClientModelManager.TEXTURE_CACHE.put("Anon Chihaya", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "textures/entity/anon.png"));
     }

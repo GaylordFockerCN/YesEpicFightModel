@@ -4,17 +4,13 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.logging.LogUtils;
-import com.p1nero.efmm.efmodel.LogicServerModelManager;
-import com.p1nero.efmm.network.PacketHandler;
-import com.p1nero.efmm.network.PacketRelay;
-import com.p1nero.efmm.network.packet.ResetClientModelPacket;
+import com.p1nero.efmm.efmodel.ServerModelManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
 
 public class EFMMCommand {
@@ -28,7 +24,7 @@ public class EFMMCommand {
                                 .then(Commands.literal("add")
                                         .executes((commandContext -> {
                                             for (ServerPlayer player : EntityArgument.getPlayers(commandContext, "players")) {
-                                                LogicServerModelManager.UPLOAD_WHITE_LIST.add(player.getUUID());
+                                                ServerModelManager.UPLOAD_WHITE_LIST.add(player.getUUID());
                                                 player.displayClientMessage(Component.translatable("tip.efmm.can_upload_now"), false);
                                                 LOGGER.info("Add {} to upload white list", player.getDisplayName().getString());
                                             }
@@ -38,7 +34,7 @@ public class EFMMCommand {
                                 .then(Commands.literal("remove")
                                         .executes((commandContext -> {
                                             for (ServerPlayer player : EntityArgument.getPlayers(commandContext, "players")) {
-                                                LogicServerModelManager.UPLOAD_WHITE_LIST.remove(player.getUUID());
+                                                ServerModelManager.UPLOAD_WHITE_LIST.remove(player.getUUID());
                                                 player.displayClientMessage(Component.translatable("tip.efmm.can_not_upload_now"), false);
                                                 LOGGER.info("Remove {} from upload white list", player.getDisplayName().getString());
                                             }
@@ -54,7 +50,7 @@ public class EFMMCommand {
                 .then(Commands.argument("entities", EntityArgument.entities())
                         .then(Commands.argument("model_id", StringArgumentType.string())
                                 .suggests(((commandContext, suggestionsBuilder) -> {
-                                    for (String s : LogicServerModelManager.getAllModels()) {
+                                    for (String s : ServerModelManager.getAllModels()) {
                                         suggestionsBuilder.suggest("\"" + s + "\"");
                                     }
                                     return suggestionsBuilder.buildFuture();
@@ -62,7 +58,7 @@ public class EFMMCommand {
                                 .executes((context) -> {
                                     for (Entity entity : EntityArgument.getEntities(context, "entities")) {
                                         String modelId = StringArgumentType.getString(context, "model_id");
-                                        LogicServerModelManager.authModelFor(entity, modelId);
+                                        ServerModelManager.authModelFor(entity, modelId);
                                         if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
                                             serverPlayer.displayClientMessage(Component.translatable("tip.efmm.auth_send", modelId).append(serverPlayer.getDisplayName()), false);
                                         }
@@ -74,7 +70,7 @@ public class EFMMCommand {
                         .then(Commands.literal("addAll")
                                 .executes((context) -> {
                                     for (Entity entity : EntityArgument.getEntities(context, "entities")) {
-                                        LogicServerModelManager.authAllModelFor(entity);
+                                        ServerModelManager.authAllModelFor(entity);
                                         if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
                                             serverPlayer.displayClientMessage(Component.translatable("tip.efmm.auth_all_send").append(entity.getDisplayName()), false);
                                         }
@@ -90,7 +86,7 @@ public class EFMMCommand {
                 .then(Commands.argument("entities", EntityArgument.entities())
                         .then(Commands.argument("model_id", StringArgumentType.string())
                                 .suggests(((commandContext, suggestionsBuilder) -> {
-                                    for (String s : LogicServerModelManager.getAllModels()) {
+                                    for (String s : ServerModelManager.getAllModels()) {
                                         suggestionsBuilder.suggest("\"" + s + "\"");
                                     }
                                     return suggestionsBuilder.buildFuture();
@@ -98,7 +94,7 @@ public class EFMMCommand {
                                 .executes((context) -> {
                                     for (Entity entity : EntityArgument.getEntities(context, "entities")) {
                                         String modelId = StringArgumentType.getString(context, "model_id");
-                                        LogicServerModelManager.removeAuthFor(entity, modelId);
+                                        ServerModelManager.removeAuthFor(entity, modelId);
                                         if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
                                             serverPlayer.displayClientMessage(Component.translatable("tip.efmm.auth_remove", modelId).append(entity.getDisplayName()), false);
                                         }
@@ -110,7 +106,7 @@ public class EFMMCommand {
                         .then(Commands.literal("removeAll")
                                 .executes((context) -> {
                                     for (Entity entity : EntityArgument.getEntities(context, "entities")) {
-                                        LogicServerModelManager.removeAllAuthFor(entity);
+                                        ServerModelManager.removeAllAuthFor(entity);
                                         if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
                                             serverPlayer.displayClientMessage(Component.translatable("tip.efmm.auth_all_remove").append(entity.getDisplayName()), false);
                                         }
@@ -124,7 +120,7 @@ public class EFMMCommand {
 
         dispatcher.register(Commands.literal("reloadEFModels").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
                 .executes((context) -> {
-                    LogicServerModelManager.reloadEFModels();
+                    ServerModelManager.reloadEFModels();
                     if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
                         serverPlayer.displayClientMessage(Component.translatable("tip.efmm.model_reload"), false);
                     }
@@ -137,7 +133,7 @@ public class EFMMCommand {
                         .suggests(((context, suggestionsBuilder) -> {
                             Entity entity = context.getSource().getEntity();
                             if (entity instanceof ServerPlayer serverPlayer) {
-                                for (String s : LogicServerModelManager.getOrCreateAllowedModelsFor(serverPlayer)) {
+                                for (String s : ServerModelManager.getOrCreateAllowedModelsFor(serverPlayer)) {
                                     suggestionsBuilder.suggest("\"" + s + "\"");
                                 }
                             }
@@ -149,7 +145,7 @@ public class EFMMCommand {
                                 return -1;
                             }
                             String modelId = StringArgumentType.getString(context, "model_id");
-                            if (LogicServerModelManager.getOrCreateAllowedModelsFor(entity).contains(modelId)) {
+                            if (ServerModelManager.getOrCreateAllowedModelsFor(entity).contains(modelId)) {
                                 bind(context, entity, modelId);
                             } else {
                                 if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
@@ -165,7 +161,7 @@ public class EFMMCommand {
                 .then(Commands.argument("entities", EntityArgument.entities())
                         .then(Commands.argument("model_id", StringArgumentType.string())
                                 .suggests(((commandContext, suggestionsBuilder) -> {
-                                    for (String s : LogicServerModelManager.getAllModels()) {
+                                    for (String s : ServerModelManager.getAllModels()) {
                                         suggestionsBuilder.suggest("\"" + s + "\"");
                                     }
                                     return suggestionsBuilder.buildFuture();
@@ -173,7 +169,7 @@ public class EFMMCommand {
                                 .executes((context) -> {
                                     for (Entity entity : EntityArgument.getEntities(context, "entities")) {
                                         String modelId = StringArgumentType.getString(context, "model_id");
-                                        if (LogicServerModelManager.ALLOWED_MODELS.get(entity.getUUID()).contains(modelId)) {
+                                        if (ServerModelManager.ALLOWED_MODELS.get(entity.getUUID()).contains(modelId)) {
                                             bind(context, entity, modelId);
                                         } else {
                                             if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
@@ -194,7 +190,7 @@ public class EFMMCommand {
                     if (entity == null) {
                         return -1;
                     }
-                    LogicServerModelManager.removeModelForSync(context.getSource().getPlayer(), entity);
+                    ServerModelManager.removeModelForSync(context.getSource().getPlayer(), entity);
                     if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
                         serverPlayer.displayClientMessage(Component.literal("reset model for ").append(entity.getDisplayName()), true);
                     }
@@ -206,7 +202,7 @@ public class EFMMCommand {
                 .then(Commands.argument("entities", EntityArgument.entities())
                         .executes((context) -> {
                             for (Entity entity : EntityArgument.getEntities(context, "entities")) {
-                                LogicServerModelManager.removeModelForSync(context.getSource().getPlayer(), entity);
+                                ServerModelManager.removeModelForSync(context.getSource().getPlayer(), entity);
                             }
                             return 0;
                         })
@@ -215,7 +211,7 @@ public class EFMMCommand {
     }
 
     public static void bind(CommandContext<CommandSourceStack> context, Entity entity, String modelId) {
-        LogicServerModelManager.bindModelSync(context.getSource().getPlayer(), entity, modelId);
+        ServerModelManager.bindModelSync(context.getSource().getPlayer(), entity, modelId);
     }
 
 }

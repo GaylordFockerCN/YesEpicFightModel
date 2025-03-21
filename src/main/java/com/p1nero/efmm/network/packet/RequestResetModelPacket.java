@@ -1,6 +1,6 @@
 package com.p1nero.efmm.network.packet;
 
-import com.p1nero.efmm.efmodel.LogicServerModelManager;
+import com.p1nero.efmm.efmodel.ServerModelManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -18,7 +18,7 @@ public record RequestResetModelPacket() implements BasePacket {
     @Override
     public void execute(@Nullable Player player) {
         if(player instanceof ServerPlayer serverPlayer){
-            LogicServerModelManager.removeModelForSync(serverPlayer, serverPlayer);
+            ServerModelManager.removeModelForSync(serverPlayer, serverPlayer);
         }
     }
 

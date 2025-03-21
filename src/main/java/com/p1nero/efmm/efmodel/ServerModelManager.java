@@ -16,9 +16,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.fml.loading.FMLPaths;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import yesman.epicfight.api.model.Armature;
@@ -37,20 +34,18 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class LogicServerModelManager {
+import static com.p1nero.efmm.EpicFightMeshModelMod.EFMM_CONFIG_PATH;
+import static com.p1nero.efmm.efmodel.ModelManager.*;
+
+public class ServerModelManager {
     public static final Map<UUID, Set<String>> ALLOWED_MODELS = new HashMap<>();
     public static final Set<String> NATIVE_MODELS = new HashSet<>();
     public static final Set<UUID> UPLOAD_WHITE_LIST = new HashSet<>();
     public static final Map<String, ModelConfig> ALL_MODELS = new HashMap<>();
     public static final Map<UUID, String> ENTITY_MODEL_MAP = new HashMap<>();
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    public static final Path EFMM_CONFIG_PATH = FMLPaths.CONFIGDIR.get().resolve("efmm");
     private static final Path WHITE_LIST_PATH = EFMM_CONFIG_PATH.resolve("white_list.json");
     private static final Logger LOGGER = LogUtils.getLogger();
-
-    private static final int MAX_SEND_COOLDOWN = 600;
-
-    private static int sendTimer;
 
     /**
      * 接受客户端发送的模型
@@ -128,21 +123,6 @@ public class LogicServerModelManager {
     public static void sendModelTo(ServerPlayer serverPlayer, String modelId) throws IOException {
         PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
         LOGGER.info("Send model \"{}\" to {}", modelId, serverPlayer.getDisplayName().getString());
-    }
-
-    @OnlyIn(Dist.CLIENT)
-    public static void sendModelToServer(String modelId) throws IOException{
-        if(NATIVE_MODELS.contains(modelId)){
-            if(Minecraft.getInstance().player != null){
-                Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.model_already_exist", modelId), false);
-            }
-        } else {
-            if(sendTimer == 0){
-                sendTimer = MAX_SEND_COOLDOWN;
-                PacketRelay.sendToServer(PacketHandler.INSTANCE, new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)));
-                LOGGER.info("Send model \"{}\" to server", modelId);
-            }
-        }
     }
 
     public static void authAllModelFor(Entity player) {
@@ -359,21 +339,6 @@ public class LogicServerModelManager {
         }
     }
 
-    public static EFMMJsonModelLoader getModelJsonLoader(String modelId) throws FileNotFoundException {
-        Path mainJsonPath = EFMM_CONFIG_PATH.resolve(modelId).resolve("main.json");
-        return new EFMMJsonModelLoader(mainJsonPath.toFile());
-    }
-
-    public static EFMMJsonModelLoader getModelConfigJsonLoader(String modelId) throws FileNotFoundException {
-        Path mainJsonPath = EFMM_CONFIG_PATH.resolve(modelId).resolve("config.json");
-        return new EFMMJsonModelLoader(mainJsonPath.toFile());
-    }
-
-    public static byte[] getModelTexture(String modelId) throws IOException {
-        Path texturePath = EFMM_CONFIG_PATH.resolve(modelId).resolve("texture.png");
-        return Files.readAllBytes(texturePath);
-    }
-
     public static void clearModels() {
         ALL_MODELS.clear();
     }
@@ -383,9 +348,4 @@ public class LogicServerModelManager {
         loadAllModels();
     }
 
-    public static void clientTick() {
-        if(sendTimer > 0){
-            sendTimer--;
-        }
-    }
 }

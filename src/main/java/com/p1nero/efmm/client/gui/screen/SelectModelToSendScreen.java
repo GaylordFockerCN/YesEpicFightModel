@@ -1,13 +1,9 @@
 package com.p1nero.efmm.client.gui.screen;
 
-import com.mojang.logging.LogUtils;
 import com.p1nero.efmm.client.gui.widget.TexturedModelPreviewer;
 import com.p1nero.efmm.efmodel.ClientModelManager;
-import com.p1nero.efmm.efmodel.LogicServerModelManager;
+import com.p1nero.efmm.efmodel.ServerModelManager;
 import com.p1nero.efmm.gameasstes.EFMMArmatures;
-import com.p1nero.efmm.network.PacketHandler;
-import com.p1nero.efmm.network.PacketRelay;
-import com.p1nero.efmm.network.packet.RequestResetModelPacket;
 import io.netty.util.internal.StringUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -23,7 +19,6 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
 import yesman.epicfight.api.client.model.AnimatedMesh;
 import yesman.epicfight.api.client.model.MeshProvider;
 import yesman.epicfight.client.gui.datapack.screen.MessageScreen;
@@ -31,7 +26,6 @@ import yesman.epicfight.gameasset.Animations;
 import yesman.epicfight.gameasset.Armatures;
 
 import java.util.Comparator;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 @OnlyIn(Dist.CLIENT)
@@ -66,7 +60,7 @@ public class SelectModelToSendScreen extends Screen {
         this.modelList.setRenderTopAndBottom(false);
         this.searchBox = new EditBox(Minecraft.getInstance().font, this.width / 2, 12, this.width / 2 - 12, 16, Component.translatable("tip.efmm.select_ef_model.keyword"));
         this.searchBox.setResponder(this.modelList::refreshModelList);
-
+        ClientModelManager.loadNativeModels();
         this.modelList.refreshModelList(null);
 
         int split = this.width / 2 - 80;
@@ -179,7 +173,7 @@ public class SelectModelToSendScreen extends Screen {
             this.setScrollAmount(0.0D);
             this.children().clear();
             //刷新模型列表
-            LogicServerModelManager.ALL_MODELS.keySet().stream().filter((modelId) -> StringUtil.isNullOrEmpty(keyward) || modelId.contains(keyward)).map((modelId) -> new ModelEntry(modelId, () -> ClientModelManager.getOrRequestMesh(modelId)))
+            ClientModelManager.ALL_MODELS.keySet().stream().filter((modelId) -> (StringUtil.isNullOrEmpty(keyward) || modelId.contains(keyward)) && !ClientModelManager.isNativeModel(modelId)).map((modelId) -> new ModelEntry(modelId, () -> ClientModelManager.getOrRequestMesh(modelId)))
                     .sorted(Comparator.comparing(entry$ -> entry$.modelId)).forEach(this::addEntry);
         }
 

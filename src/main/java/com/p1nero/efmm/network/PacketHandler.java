@@ -19,12 +19,15 @@ public class PacketHandler {
     private static int index;
 
     public static  void register() {
+
+        INSTANCE.messageBuilder(RegisterModelPacket.class, index++).encoder(RegisterModelPacket::write).decoder(RegisterModelPacket::decode).consumerMainThread(((registerModelPacket, contextSupplier) -> {
+            registerModelPacket.execute(contextSupplier.get().getSender());
+        })).add();
+
         //client
         register(BindModelPacket.class, BindModelPacket::decode);
         register(ResetClientModelPacket.class, ResetClientModelPacket::decode);
         register(AuthModelPacket.class, AuthModelPacket::decode);
-
-        INSTANCE.messageBuilder(RegisterModelPacket.class, index++).encoder(RegisterModelPacket::encode).decoder(RegisterModelPacket::decode).consumerMainThread(RegisterModelPacket::handle).add();
 
         //server
         register(RequestSyncModelPacket.class, RequestSyncModelPacket::decode);

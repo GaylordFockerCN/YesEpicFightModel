@@ -1,6 +1,6 @@
 package com.p1nero.efmm.network.packet;
 
-import com.p1nero.efmm.efmodel.LogicServerModelManager;
+import com.p1nero.efmm.efmodel.ServerModelManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -20,7 +20,7 @@ public record RequestBindModelPacket(String modelId) implements BasePacket {
     @Override
     public void execute(@Nullable Player player) {
         if(player instanceof ServerPlayer serverPlayer){
-            LogicServerModelManager.bindModelSync(serverPlayer, serverPlayer, modelId);
+            ServerModelManager.bindModelSync(serverPlayer, serverPlayer, modelId);
         }
     }
 

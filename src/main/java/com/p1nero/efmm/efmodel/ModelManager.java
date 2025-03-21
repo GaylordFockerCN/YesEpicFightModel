@@ -9,15 +9,22 @@ import net.minecraft.world.entity.Entity;
 import yesman.epicfight.api.model.Armature;
 import yesman.epicfight.api.utils.math.Vec3f;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
+
+import static com.p1nero.efmm.EpicFightMeshModelMod.EFMM_CONFIG_PATH;
 
 public class ModelManager {
 
     public static void loadNative(){
         EFMMArmatures.loadNativeArmatures();
-        loadNativeModelConfig("Anon Chihaya", LogicServerModelManager.ALL_MODELS, new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
+        loadNativeModelConfig("Anon Chihaya", ServerModelManager.ALL_MODELS, new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
         loadNativeModelConfig("Anon Chihaya", ClientModelManager.ALL_MODELS, new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
-        LogicServerModelManager.NATIVE_MODELS.add("Anon Chihaya");
+        ServerModelManager.NATIVE_MODELS.add("Anon Chihaya");
+        ClientModelManager.NATIVE_MODELS.add("Anon Chihaya");
     }
 
     public static boolean hasArmature(Entity entity){
@@ -27,7 +34,7 @@ public class ModelManager {
         if(entity.level().isClientSide){
             return ClientModelManager.hasNewModel(entity);
         } else {
-            return LogicServerModelManager.hasArmature(entity);
+            return ServerModelManager.hasArmature(entity);
         }
     }
 
@@ -35,7 +42,7 @@ public class ModelManager {
         if(entity.level().isClientSide){
             return ClientModelManager.getArmatureFor(entity);
         } else {
-            return LogicServerModelManager.getArmatureFor(entity);
+            return ServerModelManager.getArmatureFor(entity);
         }
     }
 
@@ -43,7 +50,7 @@ public class ModelManager {
         if(entity.level().isClientSide){
             return ClientModelManager.getScaleFor(entity);
         } else {
-            return LogicServerModelManager.getScaleFor(entity);
+            return ServerModelManager.getScaleFor(entity);
         }
     }
 
@@ -53,6 +60,21 @@ public class ModelManager {
             jsonModelLoader = new EFMMJsonModelLoader(wrapConfigLocation(resourceLocation));
             return jsonModelLoader.loadModelConfig();
         });
+    }
+
+    public static EFMMJsonModelLoader getModelJsonLoader(String modelId) throws FileNotFoundException {
+        Path mainJsonPath = EFMM_CONFIG_PATH.resolve(modelId).resolve("main.json");
+        return new EFMMJsonModelLoader(mainJsonPath.toFile());
+    }
+
+    public static EFMMJsonModelLoader getModelConfigJsonLoader(String modelId) throws FileNotFoundException {
+        Path mainJsonPath = EFMM_CONFIG_PATH.resolve(modelId).resolve("config.json");
+        return new EFMMJsonModelLoader(mainJsonPath.toFile());
+    }
+
+    public static byte[] getModelTexture(String modelId) throws IOException {
+        Path texturePath = EFMM_CONFIG_PATH.resolve(modelId).resolve("texture.png");
+        return Files.readAllBytes(texturePath);
     }
 
     public static ResourceLocation wrapConfigLocation(ResourceLocation rl) {
