@@ -16,11 +16,16 @@ public class PacketHandler {
             () -> PROTOCOL_VERSION, PROTOCOL_VERSION::equals, PROTOCOL_VERSION::equals
     );
 
-    private static int index;
+    public static final SimpleChannel MODEL_CHANNEL = NetworkRegistry.newSimpleChannel(
+            new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "model"),
+            () -> PROTOCOL_VERSION, PROTOCOL_VERSION::equals, PROTOCOL_VERSION::equals
+    );
 
-    public static  void register() {
+    private static int index, indexOfModelChannel;
 
-        INSTANCE.messageBuilder(RegisterModelPacket.class, index++).encoder(RegisterModelPacket::encode).decoder(RegisterModelPacket::decode).consumerMainThread(BasePacket::handle).add();
+    public static void register() {
+        MODEL_CHANNEL.messageBuilder(ModelPartPacket.class, indexOfModelChannel++).encoder(ModelPartPacket::encode).decoder(ModelPartPacket::decode).consumerMainThread(BasePacket::handle).add();
+        MODEL_CHANNEL.messageBuilder(RegisterModelPacket.class, indexOfModelChannel++).encoder(RegisterModelPacket::encode).decoder(RegisterModelPacket::decode).consumerMainThread(BasePacket::handle).add();
 
         //client
         register(BindModelPacket.class, BindModelPacket::decode);

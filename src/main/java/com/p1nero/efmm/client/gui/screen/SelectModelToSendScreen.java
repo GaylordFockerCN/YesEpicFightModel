@@ -1,5 +1,6 @@
 package com.p1nero.efmm.client.gui.screen;
 
+import com.mojang.logging.LogUtils;
 import com.p1nero.efmm.client.gui.widget.TexturedModelPreviewer;
 import com.p1nero.efmm.efmodel.ClientModelManager;
 import com.p1nero.efmm.efmodel.ServerModelManager;
@@ -19,6 +20,7 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
 import yesman.epicfight.api.client.model.AnimatedMesh;
 import yesman.epicfight.api.client.model.MeshProvider;
 import yesman.epicfight.client.gui.datapack.screen.MessageScreen;
@@ -36,6 +38,7 @@ public class SelectModelToSendScreen extends Screen {
     private final Consumer<String> selectCallback;
     private final Consumer<String> cancelCallback;
     private final SelectEFModelScreen parent;
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     public SelectModelToSendScreen(SelectEFModelScreen parent, Consumer<String> selectCallback, Consumer<String> cancelCallback) {
         super(Component.translatable("gui.efmm.select.models"));
@@ -93,6 +96,7 @@ public class SelectModelToSendScreen extends Screen {
                         this.selectCallback.accept(modelEntry.modelId);
                         this.onClose();
                     } catch (Exception e) {
+                        LOGGER.error("Error when upload model: ", e);
                         Minecraft.getInstance().setScreen(null);
                     }
                 }, (cancelButton) -> {
@@ -151,6 +155,7 @@ public class SelectModelToSendScreen extends Screen {
         public void setSelected(@Nullable ModelEntry selEntry) {
             super.setSelected(selEntry);
             if(selEntry != null){
+                SelectModelToSendScreen.this.texturedModelPreviewer.setModelId(selEntry.modelId);
                 SelectModelToSendScreen.this.texturedModelPreviewer.setMesh(selEntry.mesh);
                 SelectModelToSendScreen.this.texturedModelPreviewer.setArmature(EFMMArmatures.ARMATURES.getOrDefault(selEntry.modelId, Armatures.BIPED));
                 SelectModelToSendScreen.this.texturedModelPreviewer.addAnimationToPlay(Animations.BIPED_WALK);
@@ -169,11 +174,11 @@ public class SelectModelToSendScreen extends Screen {
             return this.x1 - 6;
         }
 
-        public void refreshModelList(String keyward) {
+        public void refreshModelList(String keyword) {
             this.setScrollAmount(0.0D);
             this.children().clear();
             //刷新模型列表
-            ClientModelManager.LOCAL_MODELS.keySet().stream().filter((modelId) -> (StringUtil.isNullOrEmpty(keyward) || modelId.contains(keyward))).map((modelId) -> new ModelEntry(modelId, () -> ClientModelManager.getOrRequestMesh(modelId)))
+            ClientModelManager.LOCAL_MODELS.keySet().stream().filter((modelId) -> (StringUtil.isNullOrEmpty(keyword) || modelId.contains(keyword))).map((modelId) -> new ModelEntry(modelId, () -> ClientModelManager.getOrRequestMesh(modelId)))
                     .sorted(Comparator.comparing(entry$ -> entry$.modelId)).forEach(this::addEntry);
         }
 

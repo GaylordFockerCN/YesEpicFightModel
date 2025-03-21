@@ -113,7 +113,7 @@ public class ClientModelManager {
         } else {
             if(sendTimer == 0){
                 sendTimer = MAX_SEND_COOLDOWN;
-                PacketRelay.sendToServer(PacketHandler.INSTANCE, new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)));
+                PacketRelay.sendModelToServer(new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)));
                 LOGGER.info("Send model \"{}\" to server", modelId);
             } else if(Minecraft.getInstance().player != null){
                 Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.sender_in_cooldown", sendTimer / 20), false);

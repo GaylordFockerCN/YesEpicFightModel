@@ -49,15 +49,17 @@ public class EpicFightMeshModelMod {
     }
 
     private void commonSetup(final FMLCommonSetupEvent event){
-        PacketHandler.register();
-        ModelManager.loadNative();//附属作者同样可以用这种方式把模型加入到模组里
-        try {
-            if(!Files.exists(EFMM_CONFIG_PATH)){
-                Files.createDirectory(EFMM_CONFIG_PATH);
+        event.enqueueWork(PacketHandler::register);
+        event.enqueueWork(ModelManager::loadNative);//附属作者同样可以用这种方式把模型加入到模组里
+        event.enqueueWork(()->{
+            try {
+                if(!Files.exists(EFMM_CONFIG_PATH)){
+                    Files.createDirectory(EFMM_CONFIG_PATH);
+                }
+            } catch (IOException e){
+                LOGGER.error("Failed to create config path!", e);
             }
-        } catch (IOException e){
-            LOGGER.error("Failed to create config path!", e);
-        }
+        });
     }
 
     private void onServerStart(ServerStartedEvent event) {

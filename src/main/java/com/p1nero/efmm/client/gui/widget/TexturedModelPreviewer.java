@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
+import com.p1nero.efmm.efmodel.ClientModelManager;
+import com.p1nero.efmm.gameasstes.EFMMArmatures;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.resources.ResourceLocation;
@@ -79,11 +81,13 @@ import yesman.epicfight.client.particle.TrailParticle;
 import yesman.epicfight.client.renderer.EpicFightShaders;
 import yesman.epicfight.config.EpicFightOptions;
 import yesman.epicfight.gameasset.Animations;
+import yesman.epicfight.gameasset.Armatures;
 import yesman.epicfight.world.capabilities.entitypatch.LivingEntityPatch;
 import yesman.epicfight.world.damagesource.StunType;
 
 @OnlyIn(Dist.CLIENT)
 public class TexturedModelPreviewer extends AbstractWidget implements ResizableComponent {
+    private String modelId;
     private Supplier<String> authorName = null;
     private NoEntityAnimator animator;
     private final ModelRenderTarget modelRenderTarget;
@@ -129,6 +133,14 @@ public class TexturedModelPreviewer extends AbstractWidget implements ResizableC
         this.modelRenderTarget.clear(Minecraft.ON_OSX);
     }
 
+    public void setModelId(String modelId) {
+        this.modelId = modelId;
+    }
+
+    public String getModelId() {
+        return modelId;
+    }
+
     public void setAuthorName(Supplier<String> authorName) {
         this.authorName = authorName;
     }
@@ -152,11 +164,11 @@ public class TexturedModelPreviewer extends AbstractWidget implements ResizableC
     }
 
     public @Nullable ResourceLocation getTextureLocation() {
-        return textureLocation;
+        return ClientModelManager.TEXTURE_CACHE.get(modelId);
     }
 
     public Armature getArmature() {
-        return this.animator.getEntityPatch().getArmature();
+        return EFMMArmatures.ARMATURES.getOrDefault(this.modelId, Armatures.BIPED);
     }
 
     public MeshProvider<AnimatedMesh> getMesh() {

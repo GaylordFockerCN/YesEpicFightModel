@@ -112,7 +112,7 @@ public class ServerModelManager {
             LOGGER.info("Send all allowed models permission to {}", player.getDisplayName().getString());
             for(String modelId : ALLOWED_MODELS.get(player.getUUID())){
                 if(!NATIVE_MODELS.contains(modelId)){
-                    sendModelTo(serverPlayer, modelId);
+                    sendModelWithoutCooldown(serverPlayer, modelId);
                 }
             }
         }
@@ -140,13 +140,19 @@ public class ServerModelManager {
         }
     }
 
+    public static void sendModelWithoutCooldown(ServerPlayer serverPlayer, String modelId) throws IOException {
+        responseDelayTimer = EFMMConfig.MAX_RESPONSE_INTERVAL.get();
+        PacketRelay.sendModelToPlayer(new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
+        LOGGER.info("Send model [{}] to {}", modelId, serverPlayer.getDisplayName().getString());
+    }
+
     public static void sendModelTo(ServerPlayer serverPlayer, String modelId) throws IOException {
         if(responseDelayTimer > 0){
             serverPlayer.displayClientMessage(Component.translatable("tip.efmm.sender_in_cooldown", responseDelayTimer / 20), false);
             return;
         }
         responseDelayTimer = EFMMConfig.MAX_RESPONSE_INTERVAL.get();
-        PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
+        PacketRelay.sendModelToPlayer(new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
         LOGGER.info("Send model [{}] to {}", modelId, serverPlayer.getDisplayName().getString());
     }
 

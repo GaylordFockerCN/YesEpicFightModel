@@ -159,6 +159,7 @@ public class SelectEFModelScreen extends Screen {
         public void setSelected(@Nullable ModelEntry selEntry) {
             super.setSelected(selEntry);
             if (selEntry != null) {
+                SelectEFModelScreen.this.texturedModelPreviewer.setModelId(selEntry.modelId);
                 SelectEFModelScreen.this.texturedModelPreviewer.setMesh(selEntry.mesh);
                 SelectEFModelScreen.this.texturedModelPreviewer.setArmature(EFMMArmatures.ARMATURES.getOrDefault(selEntry.modelId, Armatures.BIPED));
                 SelectEFModelScreen.this.texturedModelPreviewer.addAnimationToPlay(Animations.BIPED_WALK);

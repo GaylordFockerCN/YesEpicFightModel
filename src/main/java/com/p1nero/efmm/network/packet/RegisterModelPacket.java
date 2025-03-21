@@ -9,7 +9,6 @@ import com.p1nero.efmm.efmodel.ClientModelManager;
 import com.p1nero.efmm.efmodel.ServerModelManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.PacketListener;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -22,9 +21,6 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
-import java.util.zip.DataFormatException;
-import java.util.zip.Deflater;
-import java.util.zip.Inflater;
 
 public class RegisterModelPacket implements BasePacket {
     private final String modelId;
@@ -60,6 +56,7 @@ public class RegisterModelPacket implements BasePacket {
         writeSegmentedData(buf, configJsonBytes);
 
         writeSegmentedData(buf, imageCache);
+        System.out.println(buf.readableBytes());
     }
 
     private void writeSegmentedData(FriendlyByteBuf buf, byte[] data) {
@@ -77,6 +74,7 @@ public class RegisterModelPacket implements BasePacket {
     }
 
     public static RegisterModelPacket decode(FriendlyByteBuf buf) {
+        System.out.println(buf.readableBytes());
         String modelId = buf.readUtf();
         byte[] modelJsonBytes = readSegmentedData(buf);
         byte[] configJsonBytes = readSegmentedData(buf);
@@ -112,12 +110,16 @@ public class RegisterModelPacket implements BasePacket {
                 JsonObject modelJson = parseJson(new String(modelJsonBytes, StandardCharsets.UTF_8));
                 JsonObject configJson = parseJson(new String(configJsonBytes, StandardCharsets.UTF_8));
                 ServerModelManager.registerModel(serverPlayer, modelId, modelJson, configJson, imageCache);
-            } else {
-                serverPlayer.displayClientMessage(Component.translatable("tip.efmm.sender_no_permission"), false);
-                LOGGER.info("Sender don't have permission!");
+                return;
             }
+            serverPlayer.displayClientMessage(Component.translatable("tip.efmm.sender_no_permission"), false);
+            LOGGER.info("Sender don't have permission!");
         } else {
             if(Minecraft.getInstance().player != null && Minecraft.getInstance().level != null){
+                if(ClientModelManager.MODELS_BLACK_LIST.contains(modelId)){
+                    Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.model_to_large", modelId), false);
+                    return;
+                }
                 JsonObject modelJson = parseJson(new String(modelJsonBytes, StandardCharsets.UTF_8));
                 JsonObject configJson = parseJson(new String(configJsonBytes, StandardCharsets.UTF_8));
                 ClientModelManager.registerModelFromServer(modelId, modelJson, configJson, imageCache);
