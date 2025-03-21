@@ -155,7 +155,7 @@ public class SelectModelToSendScreen extends Screen {
                 SelectModelToSendScreen.this.texturedModelPreviewer.setArmature(EFMMArmatures.ARMATURES.getOrDefault(selEntry.modelId, Armatures.BIPED));
                 SelectModelToSendScreen.this.texturedModelPreviewer.addAnimationToPlay(Animations.BIPED_WALK);
                 SelectModelToSendScreen.this.texturedModelPreviewer.setTextureLocation(ClientModelManager.TEXTURE_CACHE.get(selEntry.modelId));
-                SelectModelToSendScreen.this.texturedModelPreviewer.setAuthorName(() -> ClientModelManager.getOrRequestModelConfig(selEntry.modelId).getAuthorName());
+                SelectModelToSendScreen.this.texturedModelPreviewer.setAuthorName(() -> ClientModelManager.getLocalModelConfig(selEntry.modelId).getAuthorName());
             }
         }
 
@@ -173,7 +173,7 @@ public class SelectModelToSendScreen extends Screen {
             this.setScrollAmount(0.0D);
             this.children().clear();
             //刷新模型列表
-            ClientModelManager.ALL_MODELS.keySet().stream().filter((modelId) -> (StringUtil.isNullOrEmpty(keyward) || modelId.contains(keyward)) && !ClientModelManager.isNativeModel(modelId)).map((modelId) -> new ModelEntry(modelId, () -> ClientModelManager.getOrRequestMesh(modelId)))
+            ClientModelManager.LOCAL_MODELS.keySet().stream().filter((modelId) -> (StringUtil.isNullOrEmpty(keyward) || modelId.contains(keyward))).map((modelId) -> new ModelEntry(modelId, () -> ClientModelManager.getOrRequestMesh(modelId)))
                     .sorted(Comparator.comparing(entry$ -> entry$.modelId)).forEach(this::addEntry);
         }
 

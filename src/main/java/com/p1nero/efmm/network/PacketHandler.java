@@ -20,9 +20,7 @@ public class PacketHandler {
 
     public static  void register() {
 
-        INSTANCE.messageBuilder(RegisterModelPacket.class, index++).encoder(RegisterModelPacket::write).decoder(RegisterModelPacket::decode).consumerMainThread(((registerModelPacket, contextSupplier) -> {
-            registerModelPacket.execute(contextSupplier.get().getSender());
-        })).add();
+        INSTANCE.messageBuilder(RegisterModelPacket.class, index++).encoder(RegisterModelPacket::encode).decoder(RegisterModelPacket::decode).consumerMainThread(BasePacket::handle).add();
 
         //client
         register(BindModelPacket.class, BindModelPacket::decode);

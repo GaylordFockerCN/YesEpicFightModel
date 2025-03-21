@@ -53,7 +53,7 @@ public class ClientModelManager {
         return ALL_MODELS.keySet();
     }
     private static final Pattern INVALID_CHARS_PATTERN = Pattern.compile("[^a-z_]");
-    public static final int MAX_REQUEST_INTERVAL = 40;
+    public static final int MAX_REQUEST_INTERVAL = 120;
     private static int requestDelayTimer;
 
     private static final int MAX_SEND_COOLDOWN = 600;
@@ -65,11 +65,18 @@ public class ClientModelManager {
      */
     @OnlyIn(Dist.CLIENT)
     public static void loadNativeModels() {
-
+        LOGGER.info("Loading native models:");
         try (Stream<Path> subDirs = Files.list(EFMM_CONFIG_PATH)) {
             subDirs.filter(Files::isDirectory).forEach(modelFileDir -> {
                 try {
                     String modelId = modelFileDir.toFile().getName();
+
+                    if(ALL_MODELS.containsKey(modelId)){
+                        LOCAL_MODELS.put(modelId, ALL_MODELS.get(modelId));
+                        LOGGER.info("Model [{}] already exist! skipped.", modelId);
+                        return;
+                    }
+
                     EFMMJsonModelLoader mainJsonLoader = getModelJsonLoader(modelId);
                     EFMMArmatures.ARMATURES.put(modelId, mainJsonLoader.loadArmature(HumanoidArmature::new));
                     EFMMMeshes.MESHES.put(modelId, mainJsonLoader.loadAnimatedMesh(AnimatedMesh::new));
@@ -85,7 +92,7 @@ public class ClientModelManager {
                     }
 
                     EFMMJsonModelLoader configJsonLoader = getModelConfigJsonLoader(modelId);
-                    ALL_MODELS.put(modelId, configJsonLoader.loadModelConfig());
+                    LOCAL_MODELS.put(modelId, configJsonLoader.loadModelConfig());
                     LOGGER.info("LOAD EPIC FIGHT MODEL >> {}", modelId);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
@@ -108,6 +115,8 @@ public class ClientModelManager {
                 sendTimer = MAX_SEND_COOLDOWN;
                 PacketRelay.sendToServer(PacketHandler.INSTANCE, new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)));
                 LOGGER.info("Send model \"{}\" to server", modelId);
+            } else if(Minecraft.getInstance().player != null){
+                Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.sender_in_cooldown", sendTimer / 20), false);
             }
         }
     }
@@ -255,14 +264,20 @@ public class ClientModelManager {
         return ModelConfig.getDefault();
     }
 
-    public static void sendRequestModelPacket(String modelId){
-        if(MODELS_BLACK_LIST.contains(modelId)){
-            return;
+    /**
+     * 本地则不发包
+     */
+    public static ModelConfig getLocalModelConfig(String modelId){
+        if(LOCAL_MODELS.containsKey(modelId)){
+            return LOCAL_MODELS.get(modelId);
         }
-        if(requestDelayTimer > 0){
-            requestDelayTimer--;
-        } else {
+        return ModelConfig.getDefault();
+    }
+
+    public static void sendRequestModelPacket(String modelId){
+        if(!MODELS_BLACK_LIST.contains(modelId) && requestDelayTimer <= 0) {
             PacketRelay.sendToServer(PacketHandler.INSTANCE, new RequestSyncModelPacket(modelId));
+            LOGGER.info("Send sync model [{}] request.", modelId);
             requestDelayTimer = MAX_REQUEST_INTERVAL;
         }
     }
@@ -280,6 +295,9 @@ public class ClientModelManager {
     public static void clientTick() {
         if(sendTimer > 0){
             sendTimer--;
+        }
+        if(requestDelayTimer > 0){
+            requestDelayTimer--;
         }
     }
 }

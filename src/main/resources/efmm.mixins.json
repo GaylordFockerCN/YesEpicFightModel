@@ -5,7 +5,6 @@
   "compatibilityLevel": "JAVA_8",
   "refmap": "efmm.refmap.json",
   "mixins": [
-    "ForgeConnectionNetworkFilerMixin",
     "LivingEntityPatchMixin",
     "PlayerPatchMixin"
   ],

@@ -110,7 +110,6 @@ public class EFMMJsonModelLoader {
         return hashStream;
     }
 
-    @OnlyIn(Dist.CLIENT)
     public EFMMJsonModelLoader(InputStream inputstream) throws IOException {
         JsonReader jsonReader;
         jsonReader = new JsonReader(new InputStreamReader(inputstream, StandardCharsets.UTF_8));
@@ -120,7 +119,6 @@ public class EFMMJsonModelLoader {
         this.fileHash = StringUtil.EMPTY_STRING;
     }
 
-    @OnlyIn(Dist.CLIENT)
     public EFMMJsonModelLoader(JsonObject rootJson) {
         this.rootJson = rootJson;
         this.fileHash = StringUtil.EMPTY_STRING;

@@ -43,15 +43,19 @@ public class ServerModelManager {
     public static final Set<UUID> UPLOAD_WHITE_LIST = new HashSet<>();
     public static final Map<String, ModelConfig> ALL_MODELS = new HashMap<>();
     public static final Map<UUID, String> ENTITY_MODEL_MAP = new HashMap<>();
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Gson GSON = new GsonBuilder().create();
     private static final Path WHITE_LIST_PATH = EFMM_CONFIG_PATH.resolve("white_list.json");
     private static final Logger LOGGER = LogUtils.getLogger();
-
+    private static int responseDelayTimer;
     /**
      * 接受客户端发送的模型
      */
     public static void registerModel(ServerPlayer sender, String modelId, JsonObject modelJson, JsonObject configJson, byte[] imageCache) {
-
+        if(responseDelayTimer > 0){
+            sender.displayClientMessage(Component.translatable("tip.efmm.sender_in_cooldown", responseDelayTimer / 20), false);
+            return;
+        }
+        responseDelayTimer = EFMMConfig.MAX_RESPONSE_INTERVAL.get();
         if(!UPLOAD_WHITE_LIST.contains(sender.getUUID())){
             sender.displayClientMessage(Component.translatable("tip.efmm.sender_no_permission"), false);
             LOGGER.info("Sender don't have permission!");
@@ -60,7 +64,7 @@ public class ServerModelManager {
 
         if(ALL_MODELS.containsKey(modelId)){
             sender.displayClientMessage(Component.translatable("tip.efmm.model_already_exist", modelId), false);
-            LOGGER.info("Model already exist \"{}\" in server!", modelId);
+            LOGGER.info("Model already exist [{}] in server!", modelId);
             return;
         }
 
@@ -69,27 +73,29 @@ public class ServerModelManager {
             if(Minecraft.getInstance().player != null){
                 sender.displayClientMessage(Component.translatable("tip.efmm.model_to_large_server", modelId), false);
             }
-            LOGGER.info("Received a too large model \"{}\" from client! Skipped.", modelId);
+            LOGGER.info("Received a too large model [{}] from client! Skipped.", modelId);
             return;
         }
 
+        Path modelPath = EFMM_CONFIG_PATH.resolve(modelId);
         try  {
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            Path mainJsonPath = EFMM_CONFIG_PATH.resolve("main.json");
-            Files.writeString(mainJsonPath, gson.toJson(modelJson));
-            Path configJsonPath = EFMM_CONFIG_PATH.resolve("config.json");
-            Files.writeString(configJsonPath, gson.toJson(configJson));
-            Path texturePath = EFMM_CONFIG_PATH.resolve("texture.png");
+            Files.createDirectory(modelPath);
+            Path mainJsonPath = modelPath.resolve("main.json");
+            Files.writeString(mainJsonPath, GSON.toJson(modelJson));
+            Path configJsonPath = modelPath.resolve("config.json");
+            Files.writeString(configJsonPath, GSON.toJson(configJson));
+            Path texturePath = modelPath.resolve("texture.png");
             Files.write(texturePath, imageCache);
         } catch (Exception e) {
-            LOGGER.error("Failed to save image data for model {}", modelId, e);
+            LOGGER.error("Failed to save client model [{}]", modelId, e);
         }
-
+        LOGGER.info("Setup client model [{}].", modelId);
         EFMMArmatures.ARMATURES.put(modelId, modelLoader.loadArmature(HumanoidArmature::new));
         EFMMJsonModelLoader modelConfigLoader = new EFMMJsonModelLoader(configJson);
         ALL_MODELS.put(modelId, modelConfigLoader.loadModelConfig());
+        LOGGER.info("Registered new model [{}] from client.", modelId);
+        sender.displayClientMessage(Component.translatable("tip.efmm.success_send_to_server", modelId), false);
         authModelFor(sender, modelId);//自动授权给发送者
-        LOGGER.info("Registered new model \"{}\" from client.", modelId);
     }
 
     public static Set<String> getOrCreateAllowedModelsFor(Entity player) {
@@ -103,7 +109,7 @@ public class ServerModelManager {
     public static void authAllAllowedModelToClient(Entity player) throws IOException {
         if (player instanceof ServerPlayer serverPlayer) {
             PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(false, getOrCreateAllowedModelsFor(player).stream().toList()), serverPlayer);
-            LOGGER.info("Send all models permission to {}", player.getDisplayName().getString());
+            LOGGER.info("Send all allowed models permission to {}", player.getDisplayName().getString());
             for(String modelId : ALLOWED_MODELS.get(player.getUUID())){
                 if(!NATIVE_MODELS.contains(modelId)){
                     sendModelTo(serverPlayer, modelId);
@@ -112,17 +118,36 @@ public class ServerModelManager {
         }
     }
 
+    public static void bindExistingModelToClient(Entity player) {
+        if (player instanceof ServerPlayer serverPlayer) {
+            ENTITY_MODEL_MAP.forEach((uuid, modelId) -> {
+                Entity entity = serverPlayer.serverLevel().getEntity(uuid);
+                if(entity != null){
+                    PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new BindModelPacket(entity.getId(), modelId), serverPlayer);
+                }
+            });
+
+            LOGGER.info("Send existing model map to {}", player.getDisplayName().getString());
+        }
+    }
+
     public static void authModelFor(Entity player, String modelId) {
         getOrCreateAllowedModelsFor(player).add(modelId);
         if (player instanceof ServerPlayer serverPlayer) {
             PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(false, List.of(modelId)), serverPlayer);
-            LOGGER.info("Send \"{}\" permission to {}", modelId, player.getDisplayName().getString());
+            LOGGER.info("Send [{}] permission to {}", modelId, player.getDisplayName().getString());
+            serverPlayer.displayClientMessage(Component.translatable("tip.efmm.permission_got", modelId), false);
         }
     }
 
     public static void sendModelTo(ServerPlayer serverPlayer, String modelId) throws IOException {
+        if(responseDelayTimer > 0){
+            serverPlayer.displayClientMessage(Component.translatable("tip.efmm.sender_in_cooldown", responseDelayTimer / 20), false);
+            return;
+        }
+        responseDelayTimer = EFMMConfig.MAX_RESPONSE_INTERVAL.get();
         PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
-        LOGGER.info("Send model \"{}\" to {}", modelId, serverPlayer.getDisplayName().getString());
+        LOGGER.info("Send model [{}] to {}", modelId, serverPlayer.getDisplayName().getString());
     }
 
     public static void authAllModelFor(Entity player) {
@@ -135,7 +160,7 @@ public class ServerModelManager {
     public static void removeAuthFor(Entity player, String modelId) {
         if (getOrCreateAllowedModelsFor(player).remove(modelId) && player instanceof ServerPlayer serverPlayer) {
             PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(true, List.of(modelId)), serverPlayer);
-            LOGGER.info("Send remove \"{}\" auth packet to {}", modelId, player.getDisplayName().getString());
+            LOGGER.info("Send remove [{}] auth packet to {}", modelId, player.getDisplayName().getString());
         }
     }
 
@@ -150,6 +175,9 @@ public class ServerModelManager {
     public static boolean bindModelFor(Entity entity, String modelId) {
         if (!ALL_MODELS.containsKey(modelId)) {
             return false;
+        }
+        if(ENTITY_MODEL_MAP.containsKey(entity.getUUID()) && ENTITY_MODEL_MAP.get(entity.getUUID()).equals(modelId)){
+            return true;
         }
         ENTITY_MODEL_MAP.put(entity.getUUID(), modelId);
         return true;
@@ -346,6 +374,12 @@ public class ServerModelManager {
     public static void reloadEFModels() {
         clearModels();
         loadAllModels();
+    }
+
+    public static void serverTick(){
+        if(responseDelayTimer > 0) {
+            responseDelayTimer--;
+        }
     }
 
 }

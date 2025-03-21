@@ -1,11 +1,13 @@
 package com.p1nero.efmm;
 
 import com.mojang.logging.LogUtils;
+import com.p1nero.efmm.command.EFMMClientCommand;
 import com.p1nero.efmm.command.EFMMCommand;
 import com.p1nero.efmm.efmodel.ClientModelManager;
 import com.p1nero.efmm.efmodel.ServerModelManager;
 import com.p1nero.efmm.efmodel.ModelManager;
 import com.p1nero.efmm.network.PacketHandler;
+import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
@@ -37,10 +39,12 @@ public class EpicFightMeshModelMod {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         modEventBus.addListener(this::commonSetup);
         MinecraftForge.EVENT_BUS.addListener(this::onClientTick);
+        MinecraftForge.EVENT_BUS.addListener(this::onServerTick);
         MinecraftForge.EVENT_BUS.addListener(this::onServerStart);
         MinecraftForge.EVENT_BUS.addListener(this::onServerStop);
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
         MinecraftForge.EVENT_BUS.addListener(this::registerCommand);
+        MinecraftForge.EVENT_BUS.addListener(this::registerClientCommand);
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, EFMMConfig.SPEC);
     }
 
@@ -66,6 +70,10 @@ public class EpicFightMeshModelMod {
         ClientModelManager.clientTick();
     }
 
+    private void onServerTick(TickEvent.ServerTickEvent event) {
+        ServerModelManager.serverTick();
+    }
+
     private void onServerStop(ServerStoppedEvent event) {
         ServerModelManager.saveAllowedModels();
         ServerModelManager.saveUploadWhiteList();
@@ -75,14 +83,18 @@ public class EpicFightMeshModelMod {
         if(!event.getEntity().level().isClientSide){
             try {
                 ServerModelManager.authAllAllowedModelToClient(event.getEntity());
+                ServerModelManager.bindExistingModelToClient(event.getEntity());
             } catch (IOException e){
-                LOGGER.error("Failed to auth allowed model to client!", e);
+                LOGGER.error("Failed to sync model to client!", e);
             }
         }
     }
 
     private void registerCommand(RegisterCommandsEvent event){
         EFMMCommand.register(event.getDispatcher());
+    }
+    private void registerClientCommand(RegisterClientCommandsEvent event){
+        EFMMClientCommand.register(event.getDispatcher());
     }
 
 }

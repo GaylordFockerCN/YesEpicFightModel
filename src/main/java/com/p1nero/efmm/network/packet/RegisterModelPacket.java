@@ -11,7 +11,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.PacketListener;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import org.jetbrains.annotations.NotNull;
@@ -23,15 +22,17 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.zip.DataFormatException;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
 
-public class RegisterModelPacket implements Packet<PacketListener> {
+public class RegisterModelPacket implements BasePacket {
     private final String modelId;
     private JsonObject modelJsonCache, configJsonCache;
     private final byte[] imageCache;
     private byte[] modelJsonBytes;
     private byte[] configJsonBytes;
     private static final Logger LOGGER = LogUtils.getLogger();
-
 
     public RegisterModelPacket(String modelId, @NotNull JsonObject modelJsonCache,  @NotNull JsonObject configJsonCache, byte[] imageCache) {
         this.modelId = modelId;
@@ -48,10 +49,11 @@ public class RegisterModelPacket implements Packet<PacketListener> {
     }
 
     @Override
-    public void write(FriendlyByteBuf buf) {
+    public void encode(FriendlyByteBuf buf) {
         buf.writeUtf(modelId);
 
         byte[] modelJsonBytes = modelJsonCache.toString().getBytes(StandardCharsets.UTF_8);
+
         writeSegmentedData(buf, modelJsonBytes);
 
         byte[] configJsonBytes = configJsonCache.toString().getBytes(StandardCharsets.UTF_8);
@@ -104,10 +106,6 @@ public class RegisterModelPacket implements Packet<PacketListener> {
     }
 
     @Override
-    public void handle(@NotNull PacketListener packetListener) {
-
-    }
-
     public void execute(@Nullable Player player) {
         if(player instanceof ServerPlayer serverPlayer) {
             if(ServerModelManager.UPLOAD_WHITE_LIST.contains(serverPlayer.getUUID())){
