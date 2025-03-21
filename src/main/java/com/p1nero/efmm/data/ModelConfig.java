@@ -1,16 +1,13 @@
 package com.p1nero.efmm.data;
 
-import net.minecraft.world.entity.EquipmentSlot;
-
-import java.util.Set;
-
 public class ModelConfig {
+    public static final ModelConfig DEFAULT_CONFIG = new ModelConfig();
     protected float scaleX;
     protected float scaleY;
     protected float scaleZ;
-
     protected String authorName;
-    protected Set<EquipmentSlot> hideArmorList;
+    protected boolean shouldHideWearable;
+    protected boolean shouldHideElytra;
     public ModelConfig(){
         authorName = "Anonymous";
         scaleX = scaleY = scaleZ = 1.0F;
@@ -24,7 +21,7 @@ public class ModelConfig {
     }
 
     public static ModelConfig getDefault(){
-        return new ModelConfig();
+        return DEFAULT_CONFIG;
     }
 
     public float scaleX() {
@@ -43,13 +40,19 @@ public class ModelConfig {
         return authorName;
     }
 
-    public Set<EquipmentSlot> getHideArmorList() {
-        return hideArmorList;
+    public void setShouldHideWearable(boolean shouldHideWearable) {
+        this.shouldHideWearable = shouldHideWearable;
     }
 
-    public void setHideArmorList(Set<EquipmentSlot> hideArmorList) {
-        this.hideArmorList = hideArmorList;
+    public boolean shouldHideWearable() {
+        return shouldHideWearable;
     }
 
+    public void setShouldHideElytra(boolean shouldHideElytra) {
+        this.shouldHideElytra = shouldHideElytra;
+    }
 
+    public boolean shouldHideElytra() {
+        return shouldHideElytra;
+    }
 }

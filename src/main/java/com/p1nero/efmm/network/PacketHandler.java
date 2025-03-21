@@ -23,7 +23,8 @@ public class PacketHandler {
         register(BindModelPacket.class, BindModelPacket::decode);
         register(ResetClientModelPacket.class, ResetClientModelPacket::decode);
         register(AuthModelPacket.class, AuthModelPacket::decode);
-        register(RegisterModelPacket.class, RegisterModelPacket::decode);
+
+        INSTANCE.messageBuilder(RegisterModelPacket.class, index++).encoder(RegisterModelPacket::encode).decoder(RegisterModelPacket::decode).consumerMainThread(RegisterModelPacket::handle).add();
 
         //server
         register(RequestSyncModelPacket.class, RequestSyncModelPacket::decode);
@@ -34,4 +35,5 @@ public class PacketHandler {
     private static <MSG extends BasePacket> void register(final Class<MSG> packet, Function<FriendlyByteBuf, MSG> decoder) {
         INSTANCE.messageBuilder(packet, index++).encoder(BasePacket::encode).decoder(decoder).consumerMainThread(BasePacket::handle).add();
     }
+
 }

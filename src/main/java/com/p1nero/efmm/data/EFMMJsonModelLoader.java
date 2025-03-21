@@ -289,11 +289,20 @@ public class EFMMJsonModelLoader {
         if(!this.rootJson.has("author")){
             throw new IllegalArgumentException("Model author is null!");
         }
-        return new ModelConfig(
+        ModelConfig modelConfig = new ModelConfig(
                 this.rootJson.get("author").getAsString(),
                 this.rootJson.get("scaleX").getAsFloat(),
                 this.rootJson.get("scaleY").getAsFloat(),
                 this.rootJson.get("scaleZ").getAsFloat());
+
+        if(this.rootJson.has("shouldHideWearable")){
+            modelConfig.setShouldHideWearable(this.rootJson.get("shouldHideWearable").getAsBoolean());
+        }
+        if(this.rootJson.has("shouldHideElytra")){
+            modelConfig.setShouldHideElytra(this.rootJson.get("shouldHideElytra").getAsBoolean());
+        }
+
+        return modelConfig;
     }
 
     public <T extends Armature> T loadArmature(ArmatureContructor<T> constructor) {

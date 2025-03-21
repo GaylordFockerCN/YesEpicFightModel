@@ -84,7 +84,7 @@ public class SelectEFModelScreen extends Screen {
 
         this.addRenderableWidget(this.searchBox);
         this.addRenderableWidget(Button.builder(Component.translatable("button.efmm.reset_model"), (button) -> {
-            if (Minecraft.getInstance().player != null && ClientModelManager.hasArmature(Minecraft.getInstance().player)) {
+            if (Minecraft.getInstance().player != null && ClientModelManager.hasNewModel(Minecraft.getInstance().player)) {
                 PacketRelay.sendToServer(PacketHandler.INSTANCE, new RequestResetModelPacket());
                 Minecraft.getInstance().setScreen(null);
             }

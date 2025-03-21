@@ -1,7 +1,6 @@
 package com.p1nero.efmm.mixin;
 
 import com.p1nero.efmm.efmodel.ClientModelManager;
-import com.p1nero.efmm.gameasstes.EFMMArmatures;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -29,7 +28,7 @@ public abstract class LivingEntityRendererMixin<T extends LivingEntity, M extend
 
     @Inject(method = "getRenderType", at = @At("HEAD"), cancellable = true)
     private void efmm$replaceTexture(T livingEntity, boolean p_115323_, boolean p_115324_, boolean p_115325_, CallbackInfoReturnable<RenderType> cir){
-        if(ClientModelManager.hasArmature(livingEntity) && !livingEntity.isSpectator()){
+        if(ClientModelManager.hasNewModel(livingEntity) && !livingEntity.isSpectator()){
             PlayerPatch<?> playerPatch = EpicFightCapabilities.getEntityPatch(livingEntity, PlayerPatch.class);
             if(playerPatch != null){
                 if((ConfigManager.INGAME_CONFIG.filterAnimation.get() && !playerPatch.isBattleMode())){
@@ -39,7 +38,7 @@ public abstract class LivingEntityRendererMixin<T extends LivingEntity, M extend
 
             ResourceLocation resourcelocation = this.getTextureLocation(livingEntity);
 
-            if(ClientModelManager.hasArmature(livingEntity)){
+            if(ClientModelManager.hasNewModel(livingEntity)){
                 resourcelocation = ClientModelManager.getTextureFor(livingEntity);
             }
 

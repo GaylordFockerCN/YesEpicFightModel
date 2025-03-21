@@ -8,9 +8,13 @@ import com.mojang.logging.LogUtils;
 import com.p1nero.efmm.efmodel.ClientModelManager;
 import com.p1nero.efmm.efmodel.LogicServerModelManager;
 import net.minecraft.client.Minecraft;
+import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.entity.player.Player;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -20,8 +24,29 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-public record RegisterModelPacket(String modelId, JsonObject modelJsonCache, JsonObject configJsonCache, byte[] imageCache) implements BasePacket {
+public class RegisterModelPacket implements BasePacket {
+    private final String modelId;
+    private JsonObject modelJsonCache, configJsonCache;
+    private final byte[] imageCache;
+    private byte[] modelJsonBytes;
+    private byte[] configJsonBytes;
     private static final Logger LOGGER = LogUtils.getLogger();
+
+
+    public RegisterModelPacket(String modelId, @NotNull JsonObject modelJsonCache,  @NotNull JsonObject configJsonCache, byte[] imageCache) {
+        this.modelId = modelId;
+        this.modelJsonCache = modelJsonCache;
+        this.configJsonCache = configJsonCache;
+        this.imageCache = imageCache;
+    }
+
+    public RegisterModelPacket(String modelId, byte[] modelJsonBytes, byte[] configJsonBytes, byte[] imageCache) {
+        this.modelId = modelId;
+        this.modelJsonBytes = modelJsonBytes;
+        this.configJsonBytes = configJsonBytes;
+        this.imageCache = imageCache;
+    }
+
     @Override
     public void encode(FriendlyByteBuf buf) {
         buf.writeUtf(modelId);
@@ -51,15 +76,10 @@ public record RegisterModelPacket(String modelId, JsonObject modelJsonCache, Jso
 
     public static RegisterModelPacket decode(FriendlyByteBuf buf) {
         String modelId = buf.readUtf();
-
         byte[] modelJsonBytes = readSegmentedData(buf);
-        JsonObject modelJson = parseJson(new String(modelJsonBytes, StandardCharsets.UTF_8));
-
         byte[] configJsonBytes = readSegmentedData(buf);
-        JsonObject configJson = parseJson(new String(configJsonBytes, StandardCharsets.UTF_8));
-
         byte[] imageCache = readSegmentedData(buf);
-        return new RegisterModelPacket(modelId, modelJson, configJson, imageCache);
+        return new RegisterModelPacket(modelId, modelJsonBytes, configJsonBytes, imageCache);
     }
 
     private static byte[] readSegmentedData(FriendlyByteBuf buf) {
@@ -86,10 +106,19 @@ public record RegisterModelPacket(String modelId, JsonObject modelJsonCache, Jso
     @Override
     public void execute(@Nullable Player player) {
         if(player instanceof ServerPlayer serverPlayer) {
-            LogicServerModelManager.registerModel(serverPlayer, modelId, modelJsonCache, configJsonCache, imageCache);
+            if(LogicServerModelManager.UPLOAD_WHITE_LIST.contains(serverPlayer.getUUID())){
+                JsonObject modelJson = parseJson(new String(modelJsonBytes, StandardCharsets.UTF_8));
+                JsonObject configJson = parseJson(new String(configJsonBytes, StandardCharsets.UTF_8));
+                LogicServerModelManager.registerModel(serverPlayer, modelId, modelJson, configJson, imageCache);
+            } else {
+                serverPlayer.displayClientMessage(Component.translatable("tip.efmm.sender_no_permission"), false);
+                LOGGER.info("Sender don't have permission!");
+            }
         } else {
             if(Minecraft.getInstance().player != null && Minecraft.getInstance().level != null){
-                ClientModelManager.registerModel(modelId, modelJsonCache, configJsonCache, imageCache);
+                JsonObject modelJson = parseJson(new String(modelJsonBytes, StandardCharsets.UTF_8));
+                JsonObject configJson = parseJson(new String(configJsonBytes, StandardCharsets.UTF_8));
+                ClientModelManager.registerModel(modelId, modelJson, configJson, imageCache);
             }
         }
     }

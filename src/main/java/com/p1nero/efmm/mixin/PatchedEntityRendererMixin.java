@@ -1,7 +1,6 @@
 package com.p1nero.efmm.mixin;
 
 import com.p1nero.efmm.efmodel.ClientModelManager;
-import com.p1nero.efmm.gameasstes.EFMMMeshes;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,7 +15,7 @@ import yesman.epicfight.world.capabilities.entitypatch.LivingEntityPatch;
 public class PatchedEntityRendererMixin<E extends LivingEntity, T extends LivingEntityPatch<E>> {
     @Inject(method = "getMeshProvider", at = @At("HEAD"), cancellable = true, remap = false)
     private void efmm$replaceMesh(T entityPatch, CallbackInfoReturnable<MeshProvider<AnimatedMesh>> cir){
-        if(ClientModelManager.hasMesh(entityPatch.getOriginal()) && !entityPatch.getOriginal().isSpectator()){
+        if(ClientModelManager.hasNewModel(entityPatch.getOriginal()) && !entityPatch.getOriginal().isSpectator()){
             AnimatedMesh mesh = ClientModelManager.getMeshFor(entityPatch.getOriginal());
             cir.setReturnValue(() ->  mesh);
         }

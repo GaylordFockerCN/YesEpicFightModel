@@ -133,13 +133,16 @@ public class LogicServerModelManager {
     @OnlyIn(Dist.CLIENT)
     public static void sendModelToServer(String modelId) throws IOException{
         if(NATIVE_MODELS.contains(modelId)){
-            if(Minecraft.getInstance().player != null && sendTimer == 0){
-                sendTimer = MAX_SEND_COOLDOWN;
+            if(Minecraft.getInstance().player != null){
                 Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.model_already_exist", modelId), false);
             }
+        } else {
+            if(sendTimer == 0){
+                sendTimer = MAX_SEND_COOLDOWN;
+                PacketRelay.sendToServer(PacketHandler.INSTANCE, new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)));
+                LOGGER.info("Send model \"{}\" to server", modelId);
+            }
         }
-        PacketRelay.sendToServer(PacketHandler.INSTANCE, new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)));
-        LOGGER.info("Send model \"{}\" to server", modelId);
     }
 
     public static void authAllModelFor(Entity player) {

@@ -116,7 +116,7 @@ public class ClientModelManager {
         return new Vec3f(config.scaleX(), config.scaleY(), config.scaleZ());
     }
 
-    public static boolean hasArmature(Entity entity){
+    public static boolean hasNewModel(Entity entity){
         return ENTITY_MODEL_MAP.containsKey(entity.getUUID());
     }
 
@@ -136,12 +136,24 @@ public class ClientModelManager {
         return Armatures.BIPED;
     }
 
-    public static boolean hasMesh(Entity entity){
-        return ENTITY_MODEL_MAP.containsKey(entity.getUUID());
+    /**
+     * 拿不到就请求服务端发
+     */
+    public static ModelConfig getConfigFor(Entity entity){
+        UUID uuid = entity.getUUID();
+        if(ENTITY_MODEL_MAP.containsKey(uuid)){
+            String modelId = ENTITY_MODEL_MAP.get(uuid);
+            if(ALL_MODELS.containsKey(modelId)){
+                return ALL_MODELS.get(modelId);
+            } else {
+                sendRequestModelPacket(modelId);
+            }
+        }
+        return ModelConfig.getDefault();
     }
 
     public static AnimatedMesh getMeshFor(Entity entity){
-        if(hasMesh(entity)){
+        if(hasNewModel(entity)){
             String modelId = ENTITY_MODEL_MAP.get(entity.getUUID());
             if(EFMMMeshes.MESHES.containsKey(modelId)){
                 return EFMMMeshes.MESHES.get(modelId);

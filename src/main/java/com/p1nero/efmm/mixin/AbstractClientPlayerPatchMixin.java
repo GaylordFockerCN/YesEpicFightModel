@@ -1,7 +1,6 @@
 package com.p1nero.efmm.mixin;
 
 import com.p1nero.efmm.efmodel.ClientModelManager;
-import com.p1nero.efmm.gameasstes.EFMMArmatures;
 import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,7 +15,7 @@ import yesman.epicfight.world.capabilities.entitypatch.LivingEntityPatch;
 public abstract class AbstractClientPlayerPatchMixin<T extends Player> extends LivingEntityPatch<T> {
     @Inject(method = "getModelMatrix", at = @At("RETURN"), remap = false, cancellable = true)
     private void efmm$getModelMatrix(float partialTicks, CallbackInfoReturnable<OpenMatrix4f> cir){
-        if(ClientModelManager.hasArmature(this.getOriginal()) && !this.getOriginal().isSpectator()){
+        if(ClientModelManager.hasNewModel(this.getOriginal()) && !this.getOriginal().isSpectator()){
             Vec3f scale = ClientModelManager.getScaleFor(this.getOriginal());
             cir.setReturnValue(cir.getReturnValue().scale(scale.x, scale.y, scale.z));
         }

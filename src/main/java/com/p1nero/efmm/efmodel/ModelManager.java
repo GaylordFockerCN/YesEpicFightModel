@@ -25,7 +25,7 @@ public class ModelManager {
             return false;
         }
         if(entity.level().isClientSide){
-            return ClientModelManager.hasArmature(entity);
+            return ClientModelManager.hasNewModel(entity);
         } else {
             return LogicServerModelManager.hasArmature(entity);
         }

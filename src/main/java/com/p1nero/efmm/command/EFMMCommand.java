@@ -27,7 +27,7 @@ public class EFMMCommand {
                         .then(Commands.argument("players", EntityArgument.players())
                                 .then(Commands.literal("add")
                                         .executes((commandContext -> {
-                                            for (ServerPlayer player : EntityArgument.getPlayers(commandContext, "entities")) {
+                                            for (ServerPlayer player : EntityArgument.getPlayers(commandContext, "players")) {
                                                 LogicServerModelManager.UPLOAD_WHITE_LIST.add(player.getUUID());
                                                 player.displayClientMessage(Component.translatable("tip.efmm.can_upload_now"), false);
                                                 LOGGER.info("Add {} to upload white list", player.getDisplayName().getString());
@@ -37,7 +37,7 @@ public class EFMMCommand {
                                 )
                                 .then(Commands.literal("remove")
                                         .executes((commandContext -> {
-                                            for (ServerPlayer player : EntityArgument.getPlayers(commandContext, "entities")) {
+                                            for (ServerPlayer player : EntityArgument.getPlayers(commandContext, "players")) {
                                                 LogicServerModelManager.UPLOAD_WHITE_LIST.remove(player.getUUID());
                                                 player.displayClientMessage(Component.translatable("tip.efmm.can_not_upload_now"), false);
                                                 LOGGER.info("Remove {} from upload white list", player.getDisplayName().getString());
