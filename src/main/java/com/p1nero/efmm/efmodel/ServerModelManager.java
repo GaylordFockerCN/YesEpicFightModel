@@ -108,7 +108,7 @@ public class ServerModelManager {
 
     public static void authAllAllowedModelToClient(Entity player) throws IOException {
         if (player instanceof ServerPlayer serverPlayer) {
-            PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(false, getOrCreateAllowedModelsFor(player).stream().toList()), serverPlayer);
+            PacketRelay.sendToPlayer(PacketHandler.MAIN_CHANNEL, new AuthModelPacket(false, getOrCreateAllowedModelsFor(player).stream().toList()), serverPlayer);
             LOGGER.info("Send all allowed models permission to {}", player.getDisplayName().getString());
             for(String modelId : ALLOWED_MODELS.get(player.getUUID())){
                 if(!NATIVE_MODELS.contains(modelId)){
@@ -123,7 +123,7 @@ public class ServerModelManager {
             ENTITY_MODEL_MAP.forEach((uuid, modelId) -> {
                 Entity entity = serverPlayer.serverLevel().getEntity(uuid);
                 if(entity != null){
-                    PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new BindModelPacket(entity.getId(), modelId), serverPlayer);
+                    PacketRelay.sendToPlayer(PacketHandler.MAIN_CHANNEL, new BindModelPacket(entity.getId(), modelId), serverPlayer);
                 }
             });
 
@@ -134,7 +134,7 @@ public class ServerModelManager {
     public static void authModelFor(Entity player, String modelId) {
         getOrCreateAllowedModelsFor(player).add(modelId);
         if (player instanceof ServerPlayer serverPlayer) {
-            PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(false, List.of(modelId)), serverPlayer);
+            PacketRelay.sendToPlayer(PacketHandler.MAIN_CHANNEL, new AuthModelPacket(false, List.of(modelId)), serverPlayer);
             LOGGER.info("Send [{}] permission to {}", modelId, player.getDisplayName().getString());
             serverPlayer.displayClientMessage(Component.translatable("tip.efmm.permission_got", modelId), false);
         }
@@ -158,14 +158,14 @@ public class ServerModelManager {
 
     public static void authAllModelFor(Entity player) {
         if (getOrCreateAllowedModelsFor(player).addAll(ALL_MODELS.keySet()) && player instanceof ServerPlayer serverPlayer) {
-            PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(false, ALL_MODELS.keySet().stream().toList()), serverPlayer);
+            PacketRelay.sendToPlayer(PacketHandler.MAIN_CHANNEL, new AuthModelPacket(false, ALL_MODELS.keySet().stream().toList()), serverPlayer);
             LOGGER.info("Send all models permission to {}", player.getDisplayName().getString());
         }
     }
 
     public static void removeAuthFor(Entity player, String modelId) {
         if (getOrCreateAllowedModelsFor(player).remove(modelId) && player instanceof ServerPlayer serverPlayer) {
-            PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(true, List.of(modelId)), serverPlayer);
+            PacketRelay.sendToPlayer(PacketHandler.MAIN_CHANNEL, new AuthModelPacket(true, List.of(modelId)), serverPlayer);
             LOGGER.info("Send remove [{}] auth packet to {}", modelId, player.getDisplayName().getString());
         }
     }
@@ -173,7 +173,7 @@ public class ServerModelManager {
     public static void removeAllAuthFor(Entity player) {
         getOrCreateAllowedModelsFor(player).clear();
         if (player instanceof ServerPlayer serverPlayer) {
-            PacketRelay.sendToPlayer(PacketHandler.INSTANCE, new AuthModelPacket(true, ALL_MODELS.keySet().stream().toList()), serverPlayer);
+            PacketRelay.sendToPlayer(PacketHandler.MAIN_CHANNEL, new AuthModelPacket(true, ALL_MODELS.keySet().stream().toList()), serverPlayer);
             LOGGER.info("Send remove all models packet to {}", player.getDisplayName().getString());
         }
     }
@@ -191,7 +191,7 @@ public class ServerModelManager {
 
     public static void bindModelSync(@Nullable ServerPlayer caster, Entity entity, String modelId) {
         if (bindModelFor(entity, modelId)) {
-            PacketRelay.sendToAll(PacketHandler.INSTANCE, new BindModelPacket(entity.getId(), modelId));
+            PacketRelay.sendToAll(PacketHandler.MAIN_CHANNEL, new BindModelPacket(entity.getId(), modelId));
             if(caster != null){
                 caster.displayClientMessage(Component.translatable("tip.efmm.bind_success", modelId).append(caster.getDisplayName()), false);
             }
@@ -204,7 +204,7 @@ public class ServerModelManager {
 
     public static void removeModelForSync(@Nullable ServerPlayer caster, Entity entity) {
         removeModelFor(entity);
-        PacketRelay.sendToAll(PacketHandler.INSTANCE, new ResetClientModelPacket(entity.getId()));
+        PacketRelay.sendToAll(PacketHandler.MAIN_CHANNEL, new ResetClientModelPacket(entity.getId()));
         if(caster != null){
             caster.displayClientMessage(Component.translatable("tip.efmm.reset_model").append(entity.getDisplayName()), false);
         }

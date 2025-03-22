@@ -104,7 +104,7 @@ public class RegisterModelPacket implements BasePacket {
     }
 
     @Override
-    public void execute(@Nullable Player player) {
+    public void execute(@NotNull Player player) {
         if(player instanceof ServerPlayer serverPlayer) {
             if(ServerModelManager.UPLOAD_WHITE_LIST.contains(serverPlayer.getUUID())){
                 JsonObject modelJson = parseJson(new String(modelJsonBytes, StandardCharsets.UTF_8));
@@ -115,15 +115,13 @@ public class RegisterModelPacket implements BasePacket {
             serverPlayer.displayClientMessage(Component.translatable("tip.efmm.sender_no_permission"), false);
             LOGGER.info("Sender don't have permission!");
         } else {
-            if(Minecraft.getInstance().player != null && Minecraft.getInstance().level != null){
-                if(ClientModelManager.MODELS_BLACK_LIST.contains(modelId)){
-                    Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.model_to_large", modelId), false);
-                    return;
-                }
-                JsonObject modelJson = parseJson(new String(modelJsonBytes, StandardCharsets.UTF_8));
-                JsonObject configJson = parseJson(new String(configJsonBytes, StandardCharsets.UTF_8));
-                ClientModelManager.registerModelFromServer(modelId, modelJson, configJson, imageCache);
+            if(ClientModelManager.MODELS_BLACK_LIST.contains(modelId)){
+                player.displayClientMessage(Component.translatable("tip.efmm.model_to_large", modelId), false);
+                return;
             }
+            JsonObject modelJson = parseJson(new String(modelJsonBytes, StandardCharsets.UTF_8));
+            JsonObject configJson = parseJson(new String(configJsonBytes, StandardCharsets.UTF_8));
+            ClientModelManager.registerModelFromServer(modelId, modelJson, configJson, imageCache);
         }
     }
 

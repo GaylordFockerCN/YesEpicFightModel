@@ -60,7 +60,7 @@ public class EFMMCommand {
                                         String modelId = StringArgumentType.getString(context, "model_id");
                                         ServerModelManager.authModelFor(entity, modelId);
                                         if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
-                                            serverPlayer.displayClientMessage(Component.translatable("tip.efmm.auth_send", modelId).append(serverPlayer.getDisplayName()), false);
+                                            serverPlayer.displayClientMessage(Component.translatable("tip.efmm.auth_send", modelId).append(entity.getDisplayName()), false);
                                         }
                                         LOGGER.info("give {} permission to use \"{}\" ", entity.getDisplayName().getString(), modelId);
                                     }

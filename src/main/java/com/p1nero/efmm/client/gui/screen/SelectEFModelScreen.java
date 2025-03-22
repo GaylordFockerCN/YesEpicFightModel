@@ -3,7 +3,6 @@ package com.p1nero.efmm.client.gui.screen;
 import com.mojang.logging.LogUtils;
 import com.p1nero.efmm.client.gui.widget.TexturedModelPreviewer;
 import com.p1nero.efmm.efmodel.ClientModelManager;
-import com.p1nero.efmm.efmodel.ServerModelManager;
 import com.p1nero.efmm.gameasstes.EFMMArmatures;
 import com.p1nero.efmm.network.PacketHandler;
 import com.p1nero.efmm.network.PacketRelay;
@@ -85,7 +84,7 @@ public class SelectEFModelScreen extends Screen {
         this.addRenderableWidget(this.searchBox);
         this.addRenderableWidget(Button.builder(Component.translatable("button.efmm.reset_model"), (button) -> {
             if (Minecraft.getInstance().player != null && ClientModelManager.hasNewModel(Minecraft.getInstance().player)) {
-                PacketRelay.sendToServer(PacketHandler.INSTANCE, new RequestResetModelPacket());
+                PacketRelay.sendToServer(PacketHandler.MAIN_CHANNEL, new RequestResetModelPacket());
                 Minecraft.getInstance().setScreen(null);
             }
         }).pos(10, 10).size(100, 21).build());

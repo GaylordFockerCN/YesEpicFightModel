@@ -276,7 +276,7 @@ public class ClientModelManager {
 
     public static void sendRequestModelPacket(String modelId){
         if(!MODELS_BLACK_LIST.contains(modelId) && requestDelayTimer <= 0) {
-            PacketRelay.sendToServer(PacketHandler.INSTANCE, new RequestSyncModelPacket(modelId));
+            PacketRelay.sendToServer(PacketHandler.MAIN_CHANNEL, new RequestSyncModelPacket(modelId));
             LOGGER.info("Send sync model [{}] request.", modelId);
             requestDelayTimer = MAX_REQUEST_INTERVAL;
         }

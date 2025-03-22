@@ -6,7 +6,6 @@ import com.p1nero.efmm.network.PacketRelay;
 import com.p1nero.efmm.network.packet.RequestBindModelPacket;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
@@ -42,7 +41,7 @@ public class EFMMKeyMappings {
 
     public static BiConsumer<String, MeshProvider<AnimatedMesh>> callBack = ((modelId, meshProvider) -> {
         if(!modelId.isEmpty()){
-            PacketRelay.sendToServer(PacketHandler.INSTANCE, new RequestBindModelPacket(modelId));
+            PacketRelay.sendToServer(PacketHandler.MAIN_CHANNEL, new RequestBindModelPacket(modelId));
         }
     });
 

@@ -8,6 +8,7 @@ import com.p1nero.efmm.network.packet.RegisterModelPacket;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.protocol.Packet;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -38,7 +39,7 @@ public class ModelPacketSplitter {
         return INSTANCE;
     }
 
-    public void split(final RegisterModelPacket message, Function<FriendlyByteBuf, ModelPartPacket> builder, int partSize, Consumer<BasePacket> consumer) {
+    public  <T>  void split(final RegisterModelPacket message, Function<FriendlyByteBuf, T> builder, int partSize, Consumer<T> consumer) {
         workThread.submit(() -> {
             var buffer = Unpooled.buffer();
             writePacket(message, buffer);
@@ -46,7 +47,7 @@ public class ModelPacketSplitter {
             int bufferSize = buffer.readableBytes();
             //符合天道禁锢就直接发
             if (bufferSize <= partSize) {
-                consumer.accept(message);
+                consumer.accept(builder.apply(new FriendlyByteBuf(buffer)));
                 return;
             }
             //包太大就切割
@@ -70,9 +71,7 @@ public class ModelPacketSplitter {
 
     public void merge(@Nullable UUID uuid, ByteBuf bufferIn, Consumer<RegisterModelPacket> consumer) {
         var buffer = bufferIn.asByteBuf();
-        int packetState = buffer.getInt(1);
-        System.out.println("0: " + buffer.getInt(0));
-        System.out.println("1: " + buffer.getInt(1));
+        int packetState = buffer.getInt(0);
         //拼尸块，按uuid堆起来
         if (packetState < 0) {
             var playerReceivedBuffers = receivedBuffers.computeIfAbsent(uuid == null ? clientUUID : uuid, k -> new ArrayList<>());
@@ -82,20 +81,29 @@ public class ModelPacketSplitter {
                     playerReceivedBuffers.clear();
                 }
             }
-            buffer.skipBytes(8); // skip header
+            buffer.skipBytes(4); // skip header
             playerReceivedBuffers.add(buffer.retainedDuplicate()); // we need to keep writer/reader index
             if (packetState == SPLIT_END_FLAG) {
-                var full = Unpooled.wrappedBuffer(playerReceivedBuffers.toArray(new ByteBuf[0]));
-                playerReceivedBuffers.clear();
-                consumer.accept(readPacket(full));
-                full.release();
+                workThread.submit(() -> {
+                    // ownership will transfer to full buffer, so don't call release again.
+                    var full = Unpooled.wrappedBuffer(playerReceivedBuffers.toArray(new ByteBuf[0]));
+                    playerReceivedBuffers.clear();
+                    consumer.accept(readPacket(full));
+                    full.release();
+                });
             }
             return;
         }
         //全尸直接处理
-        var receivedBuf = buffer.retainedDuplicate();
-        consumer.accept(readPacket(receivedBuf));
-        receivedBuf.release();
+        if (buffer.readableBytes() < 3000) { // 3k
+            consumer.accept(readPacket(buffer));
+            return;
+        }
+        var receivedBuf = buffer.retainedDuplicate(); // we need to keep writer/reader index
+        workThread.submit(() -> {
+            consumer.accept(readPacket(receivedBuf));
+            receivedBuf.release();
+        });
     }
 
     private void writePacket(RegisterModelPacket message, ByteBuf buffer) {
