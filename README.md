@@ -24,4 +24,6 @@
 your_model_name/
 ├── main.json       # Blender导出的骨骼和网格数据
 ├── config.json     # 模型配置文件
-└── texture.png     # 模型贴图文件
+├── texture.png     # 模型贴图文件
+├── texture_n.png   # pbr nomal 模型贴图文件（可选）
+└── texture_s.png   # pbr special 模型贴图文件（可选）
