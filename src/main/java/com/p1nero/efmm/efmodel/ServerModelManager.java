@@ -50,7 +50,7 @@ public class ServerModelManager {
     /**
      * 接受客户端发送的模型
      */
-    public static void registerModel(ServerPlayer sender, String modelId, JsonObject modelJson, JsonObject configJson, byte[] imageCache) {
+    public static void registerModel(ServerPlayer sender, String modelId, JsonObject modelJson, JsonObject configJson, byte[] imageCache, byte[] pbrN, byte[] pbrS) {
         if(responseDelayTimer > 0){
             sender.displayClientMessage(Component.translatable("tip.efmm.sender_in_cooldown", responseDelayTimer / 20), false);
             return;
@@ -86,6 +86,14 @@ public class ServerModelManager {
             Files.writeString(configJsonPath, GSON.toJson(configJson));
             Path texturePath = modelPath.resolve("texture.png");
             Files.write(texturePath, imageCache);
+            if(pbrN.length != 0){
+                Path textureNPath = modelPath.resolve("texture_n.png");
+                Files.write(textureNPath, pbrN);
+            }
+            if(pbrS.length != 0){
+                Path textureSPath = modelPath.resolve("texture_s.png");
+                Files.write(textureSPath, pbrS);
+            }
         } catch (Exception e) {
             LOGGER.error("Failed to save client model [{}]", modelId, e);
         }
@@ -142,7 +150,7 @@ public class ServerModelManager {
 
     public static void sendModelWithoutCooldown(ServerPlayer serverPlayer, String modelId) throws IOException {
         responseDelayTimer = EFMMConfig.MAX_RESPONSE_INTERVAL.get();
-        PacketRelay.sendModelToPlayer(new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
+        PacketRelay.sendModelToPlayer(new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId, ""), getModelTexture(modelId, "_n"), getModelTexture(modelId, "_s")), serverPlayer);
         LOGGER.info("Send model [{}] to {}", modelId, serverPlayer.getDisplayName().getString());
     }
 
@@ -152,7 +160,7 @@ public class ServerModelManager {
             return;
         }
         responseDelayTimer = EFMMConfig.MAX_RESPONSE_INTERVAL.get();
-        PacketRelay.sendModelToPlayer(new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)), serverPlayer);
+        PacketRelay.sendModelToPlayer(new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId, ""), getModelTexture(modelId, "_n"), getModelTexture(modelId, "_s")), serverPlayer);
         LOGGER.info("Send model [{}] to {}", modelId, serverPlayer.getDisplayName().getString());
     }
 

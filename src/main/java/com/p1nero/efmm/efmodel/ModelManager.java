@@ -19,7 +19,7 @@ import static com.p1nero.efmm.EpicFightMeshModelMod.EFMM_CONFIG_PATH;
 
 public class ModelManager {
 
-    public static void loadNative(){
+    public static void loadNative() {
         EFMMArmatures.loadNativeArmatures();
         loadNativeModelConfig("Anon Chihaya", ServerModelManager.ALL_MODELS, new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
         loadNativeModelConfig("Anon Chihaya", ClientModelManager.ALL_MODELS, new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
@@ -27,27 +27,27 @@ public class ModelManager {
         ClientModelManager.NATIVE_MODELS.add("Anon Chihaya");
     }
 
-    public static boolean hasArmature(Entity entity){
-        if(entity == null){
+    public static boolean hasArmature(Entity entity) {
+        if (entity == null) {
             return false;
         }
-        if(entity.level().isClientSide){
+        if (entity.level().isClientSide) {
             return ClientModelManager.hasNewModel(entity);
         } else {
             return ServerModelManager.hasArmature(entity);
         }
     }
 
-    public static Armature getArmatureFor(Entity entity){
-        if(entity.level().isClientSide){
+    public static Armature getArmatureFor(Entity entity) {
+        if (entity.level().isClientSide) {
             return ClientModelManager.getArmatureFor(entity);
         } else {
             return ServerModelManager.getArmatureFor(entity);
         }
     }
 
-    public static Vec3f getScaleFor(Entity entity){
-        if(entity.level().isClientSide){
+    public static Vec3f getScaleFor(Entity entity) {
+        if (entity.level().isClientSide) {
             return ClientModelManager.getScaleFor(entity);
         } else {
             return ServerModelManager.getScaleFor(entity);
@@ -72,8 +72,14 @@ public class ModelManager {
         return new EFMMJsonModelLoader(mainJsonPath.toFile());
     }
 
-    public static byte[] getModelTexture(String modelId) throws IOException {
-        Path texturePath = EFMM_CONFIG_PATH.resolve(modelId).resolve("texture.png");
+    /**
+     * 有pbr就一起发，没有就传空的
+     */
+    public static byte[] getModelTexture(String modelId, String suffix) throws IOException {
+        Path texturePath = EFMM_CONFIG_PATH.resolve(modelId).resolve("texture" + suffix + ".png");
+        if (!Files.exists(texturePath)) {
+            return new byte[0];
+        }
         return Files.readAllBytes(texturePath);
     }
 

@@ -26,22 +26,28 @@ public class RegisterModelPacket implements BasePacket {
     private final String modelId;
     private JsonObject modelJsonCache, configJsonCache;
     private final byte[] imageCache;
+    private byte[] pbrN;
+    private final byte[] pbrS;
     private byte[] modelJsonBytes;
     private byte[] configJsonBytes;
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    public RegisterModelPacket(String modelId, @NotNull JsonObject modelJsonCache,  @NotNull JsonObject configJsonCache, byte[] imageCache) {
+    public RegisterModelPacket(String modelId, @NotNull JsonObject modelJsonCache,  @NotNull JsonObject configJsonCache, byte[] imageCache, byte[] pbrN, byte[] pbrS) {
         this.modelId = modelId;
         this.modelJsonCache = modelJsonCache;
         this.configJsonCache = configJsonCache;
         this.imageCache = imageCache;
+        this.pbrN = pbrN;
+        this.pbrS = pbrS;
     }
 
-    public RegisterModelPacket(String modelId, byte[] modelJsonBytes, byte[] configJsonBytes, byte[] imageCache) {
+    public RegisterModelPacket(String modelId, byte[] modelJsonBytes, byte[] configJsonBytes, byte[] imageCache, byte[] pbrN, byte[] pbrS) {
         this.modelId = modelId;
         this.modelJsonBytes = modelJsonBytes;
         this.configJsonBytes = configJsonBytes;
         this.imageCache = imageCache;
+        this.pbrN = pbrN;
+        this.pbrS = pbrS;
     }
 
     @Override
@@ -56,7 +62,10 @@ public class RegisterModelPacket implements BasePacket {
         writeSegmentedData(buf, configJsonBytes);
 
         writeSegmentedData(buf, imageCache);
-        System.out.println(buf.readableBytes());
+
+        writeSegmentedData(buf, pbrN == null ? new byte[0] : pbrN);
+        writeSegmentedData(buf, pbrS == null ? new byte[0] : pbrS);
+
     }
 
     private void writeSegmentedData(FriendlyByteBuf buf, byte[] data) {
@@ -74,12 +83,13 @@ public class RegisterModelPacket implements BasePacket {
     }
 
     public static RegisterModelPacket decode(FriendlyByteBuf buf) {
-        System.out.println(buf.readableBytes());
         String modelId = buf.readUtf();
         byte[] modelJsonBytes = readSegmentedData(buf);
         byte[] configJsonBytes = readSegmentedData(buf);
         byte[] imageCache = readSegmentedData(buf);
-        return new RegisterModelPacket(modelId, modelJsonBytes, configJsonBytes, imageCache);
+        byte[] pbrN = readSegmentedData(buf);
+        byte[] pbrS = readSegmentedData(buf);
+        return new RegisterModelPacket(modelId, modelJsonBytes, configJsonBytes, imageCache, pbrN, pbrS);
     }
 
     private static byte[] readSegmentedData(FriendlyByteBuf buf) {
@@ -109,7 +119,7 @@ public class RegisterModelPacket implements BasePacket {
             if(ServerModelManager.UPLOAD_WHITE_LIST.contains(serverPlayer.getUUID())){
                 JsonObject modelJson = parseJson(new String(modelJsonBytes, StandardCharsets.UTF_8));
                 JsonObject configJson = parseJson(new String(configJsonBytes, StandardCharsets.UTF_8));
-                ServerModelManager.registerModel(serverPlayer, modelId, modelJson, configJson, imageCache);
+                ServerModelManager.registerModel(serverPlayer, modelId, modelJson, configJson, imageCache, pbrN, pbrS);
                 return;
             }
             serverPlayer.displayClientMessage(Component.translatable("tip.efmm.sender_no_permission"), false);
@@ -121,7 +131,7 @@ public class RegisterModelPacket implements BasePacket {
             }
             JsonObject modelJson = parseJson(new String(modelJsonBytes, StandardCharsets.UTF_8));
             JsonObject configJson = parseJson(new String(configJsonBytes, StandardCharsets.UTF_8));
-            ClientModelManager.registerModelFromServer(modelId, modelJson, configJson, imageCache);
+            ClientModelManager.registerModelFromServer(modelId, modelJson, configJson, imageCache, pbrN, pbrS);
         }
     }
 

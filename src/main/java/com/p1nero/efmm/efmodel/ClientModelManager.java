@@ -1,9 +1,9 @@
 package com.p1nero.efmm.efmodel;
 
 import com.google.gson.JsonObject;
-import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.logging.LogUtils;
 import com.p1nero.efmm.EFMMConfig;
+import com.p1nero.efmm.client.texture.BytesTexture;
 import com.p1nero.efmm.data.EFMMJsonModelLoader;
 import com.p1nero.efmm.data.ModelConfig;
 import com.p1nero.efmm.gameasstes.EFMMArmatures;
@@ -13,7 +13,6 @@ import com.p1nero.efmm.network.PacketRelay;
 import com.p1nero.efmm.network.packet.RegisterModelPacket;
 import com.p1nero.efmm.network.packet.RequestSyncModelPacket;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
@@ -29,7 +28,6 @@ import yesman.epicfight.client.mesh.HumanoidMesh;
 import yesman.epicfight.gameasset.Armatures;
 import yesman.epicfight.model.armature.HumanoidArmature;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -49,9 +47,11 @@ public class ClientModelManager {
     public static final Map<String, ResourceLocation> TEXTURE_CACHE = new HashMap<>();
     public static final Map<UUID, String> ENTITY_MODEL_MAP = new HashMap<>();
     private static final Logger LOGGER = LogUtils.getLogger();
-    public static Set<String> getAllowedModels(){
+
+    public static Set<String> getAllowedModels() {
         return ALL_MODELS.keySet();
     }
+
     private static final Pattern INVALID_CHARS_PATTERN = Pattern.compile("[^a-z_]");
     public static final int MAX_REQUEST_INTERVAL = 120;
     private static int requestDelayTimer;
@@ -59,6 +59,8 @@ public class ClientModelManager {
     private static final int MAX_SEND_COOLDOWN = 600;
 
     private static int sendTimer;
+
+    private static final String TEXTURE_NAMESPACE = "efmm_cache";
 
     /**
      * 仅开窗口时加载
@@ -71,7 +73,7 @@ public class ClientModelManager {
                 try {
                     String modelId = modelFileDir.toFile().getName();
 
-                    if(ALL_MODELS.containsKey(modelId)){
+                    if (ALL_MODELS.containsKey(modelId)) {
                         LOCAL_MODELS.put(modelId, ALL_MODELS.get(modelId));
                         LOGGER.info("Model [{}] already exist! skipped.", modelId);
                         return;
@@ -81,15 +83,9 @@ public class ClientModelManager {
                     EFMMArmatures.ARMATURES.put(modelId, mainJsonLoader.loadArmature(HumanoidArmature::new));
                     EFMMMeshes.MESHES.put(modelId, mainJsonLoader.loadAnimatedMesh(AnimatedMesh::new));
 
-                    ResourceLocation textureId = new ResourceLocation("efmm_texture_cache", INVALID_CHARS_PATTERN.matcher(modelId.toLowerCase(Locale.ROOT)).replaceAll(""));
-                    try (ByteArrayInputStream bis = new ByteArrayInputStream(getModelTexture(modelId))) {
-                        NativeImage nativeImage = NativeImage.read(NativeImage.Format.RGBA, bis);
-                        DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);
-                        Minecraft.getInstance().getTextureManager().register(textureId, dynamicTexture);
-                        TEXTURE_CACHE.put(modelId, textureId);
-                    } catch (Exception e) {
-                        LOGGER.error("Failed to read image data for model {}", modelId, e);
-                    }
+                    registerTexture(modelId, "");
+                    registerTexture(modelId, "_n");
+                    registerTexture(modelId, "_s");
 
                     EFMMJsonModelLoader configJsonLoader = getModelConfigJsonLoader(modelId);
                     LOCAL_MODELS.put(modelId, configJsonLoader.loadModelConfig());
@@ -105,31 +101,31 @@ public class ClientModelManager {
     }
 
     @OnlyIn(Dist.CLIENT)
-    public static void sendModelToServer(String modelId) throws IOException{
-        if(NATIVE_MODELS.contains(modelId)){
-            if(Minecraft.getInstance().player != null){
+    public static void sendModelToServer(String modelId) throws IOException {
+        if (NATIVE_MODELS.contains(modelId)) {
+            if (Minecraft.getInstance().player != null) {
                 Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.model_already_exist", modelId), false);
             }
         } else {
-            if(sendTimer == 0){
+            if (sendTimer == 0) {
                 sendTimer = MAX_SEND_COOLDOWN;
-                PacketRelay.sendModelToServer(new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId)));
+                PacketRelay.sendModelToServer(new RegisterModelPacket(modelId, getModelJsonLoader(modelId).getRootJson(), getModelConfigJsonLoader(modelId).getRootJson(), getModelTexture(modelId, ""), getModelTexture(modelId, "_n"), getModelTexture(modelId, "_s")));
                 LOGGER.info("Send model \"{}\" to server", modelId);
-            } else if(Minecraft.getInstance().player != null){
+            } else if (Minecraft.getInstance().player != null) {
                 Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.sender_in_cooldown", sendTimer / 20), false);
             }
         }
     }
 
     @OnlyIn(Dist.CLIENT)
-    public static void registerModelFromServer(String modelId, JsonObject modelJson, JsonObject configJson, byte[] imageCache) {
+    public static void registerModelFromServer(String modelId, JsonObject modelJson, JsonObject configJson, byte[] imageCache, byte[] pbrN, byte[] pbrS) {
         EFMMJsonModelLoader modelLoader = new EFMMJsonModelLoader(modelJson);
         HumanoidMesh mesh = modelLoader.loadAnimatedMesh(HumanoidMesh::new);
-        if(modelLoader.getPositionCountAfterLoadMesh() <= EFMMConfig.MAX_POSITIONS_COUNT.get()){
+        if (modelLoader.getPositionCountAfterLoadMesh() <= EFMMConfig.MAX_POSITIONS_COUNT.get()) {
             EFMMMeshes.MESHES.put(modelId, mesh);
         } else {
             MODELS_BLACK_LIST.add(modelId);
-            if(Minecraft.getInstance().player != null){
+            if (Minecraft.getInstance().player != null) {
                 Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.model_to_large", modelId), false);
             }
             LOGGER.info("Received a too large model \"{}\" from server! Skipped.", modelId);
@@ -137,61 +133,80 @@ public class ClientModelManager {
         }
         EFMMArmatures.ARMATURES.put(modelId, modelLoader.loadArmature(HumanoidArmature::new));
         EFMMJsonModelLoader modelConfigLoader = new EFMMJsonModelLoader(configJson);
-        ResourceLocation textureId = new ResourceLocation("efmm_texture_cache", INVALID_CHARS_PATTERN.matcher(modelId.toLowerCase(Locale.ROOT)).replaceAll(""));
-        try (ByteArrayInputStream bis = new ByteArrayInputStream(imageCache)) {
-            NativeImage nativeImage = NativeImage.read(NativeImage.Format.RGBA, bis);
-            DynamicTexture dynamicTexture = new DynamicTexture(nativeImage);
-            Minecraft.getInstance().getTextureManager().register(textureId, dynamicTexture);
-            TEXTURE_CACHE.put(modelId, textureId);
-        } catch (Exception e) {
-            LOGGER.error("Failed to read image data for model {}", modelId, e);
-        }
+        registerTexture(modelId, "", imageCache);
+        registerTexture(modelId, "_n", pbrN);
+        registerTexture(modelId, "_s", pbrS);
         ALL_MODELS.put(modelId, modelConfigLoader.loadModelConfig());
         LOGGER.info("Registered new model \"{}\" from server.", modelId);
     }
 
-    public static void removeModel(String modelId){
+    public static void registerTexture(String modelId, String suffix) throws IOException {
+        registerTexture(modelId, suffix, getModelTexture(modelId, suffix));
+    }
+
+    public static void registerTexture(String modelId, String suffix, byte[] imageCache) {
+        if(imageCache.length == 0){
+            return;
+        }
+        ResourceLocation textureId = new ResourceLocation(TEXTURE_NAMESPACE, INVALID_CHARS_PATTERN.matcher(modelId.toLowerCase(Locale.ROOT)).replaceAll("") + suffix);
+        try {
+            BytesTexture bytesTexture = new BytesTexture(imageCache, textureId);
+            Minecraft.getInstance().getTextureManager().register(textureId, bytesTexture);
+            //只需保存本体
+            if(suffix.isEmpty()){
+                TEXTURE_CACHE.put(modelId, textureId);
+            }
+            if(suffix.equals("_s")){
+                System.out.println("registeredPbrS " + textureId);
+            }
+            LOGGER.info("Successfully registered image: {}.", textureId);
+        } catch (Exception e) {
+            LOGGER.error("Failed to read image data for {}.", textureId, e);
+        }
+    }
+
+    public static void removeModel(String modelId) {
         ALL_MODELS.remove(modelId);
     }
 
-    public static void clear(){
+    public static void clear() {
         ALL_MODELS.clear();
     }
 
-    public static void authModel(String modelId){
+    public static void authModel(String modelId) {
         AUTHED_MODELS.add(modelId);
     }
 
-    public static void removeAuthModel(String modelId){
+    public static void removeAuthModel(String modelId) {
         AUTHED_MODELS.remove(modelId);
     }
 
-    public static Set<String> getAuthedModels(){
+    public static Set<String> getAuthedModels() {
         return AUTHED_MODELS;
     }
 
     /**
      * 不管有无都要绑定，无的情况下自己会请求服务端发
      */
-    public static boolean bindModelFor(Entity entity, String modelId){
+    public static boolean bindModelFor(Entity entity, String modelId) {
         ENTITY_MODEL_MAP.put(entity.getUUID(), modelId);
         return true;
     }
 
-    public static void removeModelFor(Entity entity){
+    public static void removeModelFor(Entity entity) {
         ENTITY_MODEL_MAP.remove(entity.getUUID());
     }
 
-    public static Vec3f getScaleFor(Entity entity){
+    public static Vec3f getScaleFor(Entity entity) {
         String modelId = ENTITY_MODEL_MAP.get(entity.getUUID());
-        if(!ALL_MODELS.containsKey(modelId)){
+        if (!ALL_MODELS.containsKey(modelId)) {
             return new Vec3f(1.0F, 1.0F, 1.0F);
         }
         ModelConfig config = ALL_MODELS.get(ENTITY_MODEL_MAP.get(entity.getUUID()));
         return new Vec3f(config.scaleX(), config.scaleY(), config.scaleZ());
     }
 
-    public static boolean hasNewModel(Entity entity){
+    public static boolean hasNewModel(Entity entity) {
         return ENTITY_MODEL_MAP.containsKey(entity.getUUID());
     }
 
@@ -202,11 +217,11 @@ public class ClientModelManager {
     /**
      * 拿不到就请求服务端发
      */
-    public static Armature getArmatureFor(Entity entity){
+    public static Armature getArmatureFor(Entity entity) {
         UUID uuid = entity.getUUID();
-        if(ENTITY_MODEL_MAP.containsKey(uuid)){
+        if (ENTITY_MODEL_MAP.containsKey(uuid)) {
             String modelId = ENTITY_MODEL_MAP.get(uuid);
-            if(EFMMArmatures.ARMATURES.containsKey(modelId)){
+            if (EFMMArmatures.ARMATURES.containsKey(modelId)) {
                 return EFMMArmatures.ARMATURES.get(modelId);
             } else {
                 sendRequestModelPacket(modelId);
@@ -218,11 +233,11 @@ public class ClientModelManager {
     /**
      * 拿不到就请求服务端发
      */
-    public static ModelConfig getConfigFor(Entity entity){
+    public static ModelConfig getConfigFor(Entity entity) {
         UUID uuid = entity.getUUID();
-        if(ENTITY_MODEL_MAP.containsKey(uuid)){
+        if (ENTITY_MODEL_MAP.containsKey(uuid)) {
             String modelId = ENTITY_MODEL_MAP.get(uuid);
-            if(ALL_MODELS.containsKey(modelId)){
+            if (ALL_MODELS.containsKey(modelId)) {
                 return ALL_MODELS.get(modelId);
             } else {
                 sendRequestModelPacket(modelId);
@@ -232,10 +247,10 @@ public class ClientModelManager {
     }
 
     @OnlyIn(Dist.CLIENT)
-    public static AnimatedMesh getMeshFor(Entity entity){
-        if(hasNewModel(entity)){
+    public static AnimatedMesh getMeshFor(Entity entity) {
+        if (hasNewModel(entity)) {
             String modelId = ENTITY_MODEL_MAP.get(entity.getUUID());
-            if(EFMMMeshes.MESHES.containsKey(modelId)){
+            if (EFMMMeshes.MESHES.containsKey(modelId)) {
                 return EFMMMeshes.MESHES.get(modelId);
             } else {
                 sendRequestModelPacket(modelId);
@@ -246,8 +261,8 @@ public class ClientModelManager {
 
     @Nullable
     @OnlyIn(Dist.CLIENT)
-    public static AnimatedMesh getOrRequestMesh(String modelId){
-        if(EFMMMeshes.MESHES.containsKey(modelId)){
+    public static AnimatedMesh getOrRequestMesh(String modelId) {
+        if (EFMMMeshes.MESHES.containsKey(modelId)) {
             return EFMMMeshes.MESHES.get(modelId);
         } else {
             sendRequestModelPacket(modelId);
@@ -255,8 +270,8 @@ public class ClientModelManager {
         return null;
     }
 
-    public static ModelConfig getOrRequestModelConfig(String modelId){
-        if(ALL_MODELS.containsKey(modelId)){
+    public static ModelConfig getOrRequestModelConfig(String modelId) {
+        if (ALL_MODELS.containsKey(modelId)) {
             return ALL_MODELS.get(modelId);
         } else {
             sendRequestModelPacket(modelId);
@@ -267,15 +282,15 @@ public class ClientModelManager {
     /**
      * 本地则不发包
      */
-    public static ModelConfig getLocalModelConfig(String modelId){
-        if(LOCAL_MODELS.containsKey(modelId)){
+    public static ModelConfig getLocalModelConfig(String modelId) {
+        if (LOCAL_MODELS.containsKey(modelId)) {
             return LOCAL_MODELS.get(modelId);
         }
         return ModelConfig.getDefault();
     }
 
-    public static void sendRequestModelPacket(String modelId){
-        if(!MODELS_BLACK_LIST.contains(modelId) && requestDelayTimer <= 0) {
+    public static void sendRequestModelPacket(String modelId) {
+        if (!MODELS_BLACK_LIST.contains(modelId) && requestDelayTimer <= 0) {
             PacketRelay.sendToServer(PacketHandler.MAIN_CHANNEL, new RequestSyncModelPacket(modelId));
             LOGGER.info("Send sync model [{}] request.", modelId);
             requestDelayTimer = MAX_REQUEST_INTERVAL;
@@ -283,9 +298,9 @@ public class ClientModelManager {
     }
 
     @OnlyIn(Dist.CLIENT)
-    public static ResourceLocation getTextureFor(Entity entity){
+    public static ResourceLocation getTextureFor(Entity entity) {
         String modelId = ENTITY_MODEL_MAP.get(entity.getUUID());
-        if(!ALL_MODELS.containsKey(modelId) || !TEXTURE_CACHE.containsKey(modelId)){
+        if (!ALL_MODELS.containsKey(modelId) || !TEXTURE_CACHE.containsKey(modelId)) {
             sendRequestModelPacket(modelId);
             return Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entity).getTextureLocation(entity);
         }
@@ -293,10 +308,10 @@ public class ClientModelManager {
     }
 
     public static void clientTick() {
-        if(sendTimer > 0){
+        if (sendTimer > 0) {
             sendTimer--;
         }
-        if(requestDelayTimer > 0){
+        if (requestDelayTimer > 0) {
             requestDelayTimer--;
         }
     }
