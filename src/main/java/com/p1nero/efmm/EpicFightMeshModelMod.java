@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.function.Supplier;
 
 @Mod(EpicFightMeshModelMod.MOD_ID)
 public class EpicFightMeshModelMod {
@@ -66,12 +67,12 @@ public class EpicFightMeshModelMod {
     }
 
     private void onModLoadCompat(final InterModEnqueueEvent event){
-        event.enqueueWork(()-> checkModLoad("oculus", OculusCompat::registerPBRLoader));
+        event.enqueueWork(()-> checkModLoad("oculus", () -> OculusCompat::registerPBRLoader));
     }
 
-    public static void checkModLoad(String modId, Runnable runnable) {
+    public static void checkModLoad(String modId, Supplier<Runnable> runnableSupplier) {
         if (ModList.get().isLoaded(modId)) {
-            runnable.run();
+            runnableSupplier.get().run();
         }
     }
 
