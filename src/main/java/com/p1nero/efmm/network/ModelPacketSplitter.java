@@ -2,13 +2,10 @@ package com.p1nero.efmm.network;
 
 
 import com.mojang.logging.LogUtils;
-import com.p1nero.efmm.network.packet.BasePacket;
-import com.p1nero.efmm.network.packet.ModelPartPacket;
 import com.p1nero.efmm.network.packet.RegisterModelPacket;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.protocol.Packet;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;

@@ -156,9 +156,6 @@ public class ClientModelManager {
             if(suffix.isEmpty()){
                 TEXTURE_CACHE.put(modelId, textureId);
             }
-            if(suffix.equals("_s")){
-                System.out.println("registeredPbrS " + textureId);
-            }
             LOGGER.info("Successfully registered image: {}.", textureId);
         } catch (Exception e) {
             LOGGER.error("Failed to read image data for {}.", textureId, e);
