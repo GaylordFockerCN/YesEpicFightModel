@@ -140,10 +140,12 @@ public class ClientModelManager {
         LOGGER.info("Registered new model \"{}\" from server.", modelId);
     }
 
+    @OnlyIn(Dist.CLIENT)
     public static void registerTexture(String modelId, String suffix) throws IOException {
         registerTexture(modelId, suffix, getModelTexture(modelId, suffix));
     }
 
+    @OnlyIn(Dist.CLIENT)
     public static void registerTexture(String modelId, String suffix, byte[] imageCache) {
         if(imageCache.length == 0){
             return;

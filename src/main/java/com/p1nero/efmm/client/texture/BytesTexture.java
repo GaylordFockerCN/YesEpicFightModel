@@ -7,12 +7,15 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
+@OnlyIn(Dist.CLIENT)
 public class BytesTexture extends AbstractTexture {
 
     private final byte[] buff;
