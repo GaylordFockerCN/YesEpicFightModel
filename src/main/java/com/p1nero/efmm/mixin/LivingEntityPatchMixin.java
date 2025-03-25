@@ -1,6 +1,8 @@
 package com.p1nero.efmm.mixin;
 
+import com.p1nero.efmm.efmodel.ClientModelManager;
 import com.p1nero.efmm.efmodel.ModelManager;
+import com.p1nero.efmm.efmodel.ServerModelManager;
 import com.p1nero.efmm.gameasstes.EFMMArmatures;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -16,6 +18,7 @@ import yesman.epicfight.api.model.Armature;
 import yesman.epicfight.api.utils.math.MathUtils;
 import yesman.epicfight.api.utils.math.OpenMatrix4f;
 import yesman.epicfight.api.utils.math.Vec3f;
+import yesman.epicfight.model.armature.HumanoidArmature;
 import yesman.epicfight.world.capabilities.entitypatch.HurtableEntityPatch;
 import yesman.epicfight.world.capabilities.entitypatch.LivingEntityPatch;
 
@@ -26,6 +29,14 @@ public abstract class LivingEntityPatchMixin<T extends LivingEntity> extends Hur
     @Inject(method = "getArmature", at = @At("HEAD"), cancellable = true)
     private void efmm$getArmature(CallbackInfoReturnable<Armature> cir){
         if(ModelManager.hasArmature(this.getOriginal())){
+            if(!(this.armature instanceof HumanoidArmature)){
+                if(this.isLogicalClient()){
+                    ClientModelManager.removeModelFor(this.getOriginal());
+                } else {
+                    ServerModelManager.removeModelFor(this.getOriginal());
+                }
+                return;
+            }
             cir.setReturnValue(ModelManager.getArmatureFor(this.getOriginal()));
         }
     }

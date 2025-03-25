@@ -35,7 +35,7 @@ import java.util.function.Supplier;
 public class EpicFightMeshModelMod {
 
     public static final String MOD_ID = "efmm";
-    private static final Logger LOGGER = LogUtils.getLogger();
+    public static final Logger LOGGER = LogUtils.getLogger();
     public static final Path EFMM_CONFIG_PATH = FMLPaths.CONFIGDIR.get().resolve(MOD_ID);
 
     public EpicFightMeshModelMod() {

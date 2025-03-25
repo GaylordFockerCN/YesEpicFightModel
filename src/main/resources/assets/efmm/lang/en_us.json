@@ -28,5 +28,6 @@
   "tip.efmm.can_not_upload_now": "Now you can't upload model!",
   "tip.efmm.sender_in_cooldown": "Send to frequently! Wait %d s",
   "tip.efmm.permission_got": "Now you have permission to use [%s] !",
-  "tip.efmm.success_send_to_server": "Successfully register new model [%s] in server!"
+  "tip.efmm.success_send_to_server": "Successfully register new model [%s] in server!",
+  "tip.efmm.does_not_have_ef_patch": " doesn't have Epic Fight Patch."
 }

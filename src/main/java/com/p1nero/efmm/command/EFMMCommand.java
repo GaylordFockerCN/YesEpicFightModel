@@ -11,7 +11,10 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import org.slf4j.Logger;
+import yesman.epicfight.world.capabilities.EpicFightCapabilities;
+import yesman.epicfight.world.capabilities.entitypatch.LivingEntityPatch;
 
 public class EFMMCommand {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -168,8 +171,15 @@ public class EFMMCommand {
                                 }))
                                 .executes((context) -> {
                                     for (Entity entity : EntityArgument.getEntities(context, "entities")) {
+                                        if(EpicFightCapabilities.getEntityPatch(entity, LivingEntityPatch.class) == null){
+                                            if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
+                                                serverPlayer.displayClientMessage(entity.getDisplayName().copy().append(Component.translatable("tip.efmm.does_not_have_ef_patch")), false);
+                                            }
+                                            LOGGER.warn("{} doesn't have Epic Fight Patch.", entity.getDisplayName().getString());
+                                            continue;
+                                        }
                                         String modelId = StringArgumentType.getString(context, "model_id");
-                                        if (ServerModelManager.ALLOWED_MODELS.get(entity.getUUID()).contains(modelId)) {
+                                        if (!(entity instanceof Player) || ServerModelManager.getOrCreateAllowedModelsFor(entity).contains(modelId)) {
                                             bind(context, entity, modelId);
                                         } else {
                                             if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {

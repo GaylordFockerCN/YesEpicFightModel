@@ -28,5 +28,6 @@
   "tip.efmm.can_not_upload_now": "您已被剥夺上传模型的权利！",
   "tip.efmm.sender_in_cooldown": "发送过于频繁！请等待 %d 秒",
   "tip.efmm.permission_got": "现在您有使用 [%s] 的权限了！",
-  "tip.efmm.success_send_to_server": "成功在服务器上注册模型 [%s] ！"
+  "tip.efmm.success_send_to_server": "成功在服务器上注册模型 [%s] ！",
+  "tip.efmm.does_not_have_ef_patch": " 并不具有史诗战斗属性。"
 }

@@ -201,7 +201,7 @@ public class ServerModelManager {
         if (bindModelFor(entity, modelId)) {
             PacketRelay.sendToAll(PacketHandler.MAIN_CHANNEL, new BindModelPacket(entity.getId(), modelId));
             if(caster != null){
-                caster.displayClientMessage(Component.translatable("tip.efmm.bind_success", modelId).append(caster.getDisplayName()), false);
+                caster.displayClientMessage(Component.translatable("tip.efmm.bind_success", modelId).append(entity.getDisplayName()), false);
             }
         } else {
             if(caster != null){
