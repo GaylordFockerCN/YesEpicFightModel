@@ -222,7 +222,7 @@ public class ServerModelManager {
         ENTITY_MODEL_MAP.remove(entity.getUUID());
     }
 
-    public static boolean hasArmature(Entity entity) {
+    public static boolean hasNewModel(Entity entity) {
         return ENTITY_MODEL_MAP.containsKey(entity.getUUID());
     }
 

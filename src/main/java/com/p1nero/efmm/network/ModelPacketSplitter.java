@@ -74,7 +74,7 @@ public class ModelPacketSplitter {
             var playerReceivedBuffers = receivedBuffers.computeIfAbsent(uuid == null ? clientUUID : uuid, k -> new ArrayList<>());
             if (packetState == SPLIT_BEGIN_FLAG) {
                 if (!playerReceivedBuffers.isEmpty()) {
-                    LOGGER.warn("efmm :split received out of order - inbound buffer not empty when receiving first");
+                    LOGGER.warn("EFMM : split received out of order - inbound buffer not empty when receiving first");
                     playerReceivedBuffers.clear();
                 }
             }

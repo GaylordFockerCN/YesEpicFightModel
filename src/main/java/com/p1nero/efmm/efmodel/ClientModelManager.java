@@ -187,9 +187,8 @@ public class ClientModelManager {
     /**
      * 不管有无都要绑定，无的情况下自己会请求服务端发
      */
-    public static boolean bindModelFor(Entity entity, String modelId) {
+    public static void bindModelFor(Entity entity, String modelId) {
         ENTITY_MODEL_MAP.put(entity.getUUID(), modelId);
-        return true;
     }
 
     public static void removeModelFor(Entity entity) {

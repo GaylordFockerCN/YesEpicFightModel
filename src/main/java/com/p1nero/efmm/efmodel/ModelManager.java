@@ -27,14 +27,14 @@ public class ModelManager {
         ClientModelManager.NATIVE_MODELS.add("Anon Chihaya");
     }
 
-    public static boolean hasArmature(Entity entity) {
+    public static boolean hasNewModel(Entity entity) {
         if (entity == null) {
             return false;
         }
         if (entity.level().isClientSide) {
             return ClientModelManager.hasNewModel(entity);
         } else {
-            return ServerModelManager.hasArmature(entity);
+            return ServerModelManager.hasNewModel(entity);
         }
     }
 
