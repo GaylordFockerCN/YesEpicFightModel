@@ -121,6 +121,16 @@ public class EFMMCommand {
                 )
         );
 
+        dispatcher.register(Commands.literal("reloadAutoBindEFModelList").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
+                .executes((context) -> {
+                    ServerModelManager.loadAutoBindItemList();
+                    if (context.getSource().getEntity() instanceof ServerPlayer serverPlayer) {
+                        serverPlayer.displayClientMessage(Component.translatable("tip.efmm.auto_bind_list_reload"), false);
+                    }
+                    return 0;
+                })
+        );
+
         dispatcher.register(Commands.literal("reloadEFModels").requires((commandSourceStack) -> commandSourceStack.hasPermission(2))
                 .executes((context) -> {
                     ServerModelManager.reloadEFModels();

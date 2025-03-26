@@ -1,6 +1,7 @@
 package com.p1nero.efmm.efmodel;
 
 import com.google.gson.*;
+import com.google.gson.reflect.TypeToken;
 import com.mojang.logging.LogUtils;
 import com.p1nero.efmm.EFMMConfig;
 import com.p1nero.efmm.data.EFMMJsonModelLoader;
@@ -14,8 +15,11 @@ import com.p1nero.efmm.network.packet.RegisterModelPacket;
 import com.p1nero.efmm.network.packet.ResetClientModelPacket;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.Item;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import yesman.epicfight.api.model.Armature;
@@ -40,37 +44,40 @@ import static com.p1nero.efmm.efmodel.ModelManager.*;
 public class ServerModelManager {
     public static final Map<UUID, Set<String>> ALLOWED_MODELS = new HashMap<>();
     public static final Set<String> NATIVE_MODELS = new HashSet<>();
-    public static final Set<UUID> UPLOAD_WHITE_LIST = new HashSet<>();
     public static final Map<String, ModelConfig> ALL_MODELS = new HashMap<>();
     public static final Map<UUID, String> ENTITY_MODEL_MAP = new HashMap<>();
     private static final Gson GSON = new GsonBuilder().create();
     private static final Path WHITE_LIST_PATH = EFMM_CONFIG_PATH.resolve("white_list.json");
+    public static final Set<UUID> UPLOAD_WHITE_LIST = new HashSet<>();
+    private static final Path AUTO_BIND_ITEM_LIST_PATH = EFMM_CONFIG_PATH.resolve("auto_bind_item.json");
+    public static final Map<Item, String> AUTO_BIND_ITEM_MAP = new HashMap<>();
     private static final Logger LOGGER = LogUtils.getLogger();
     private static int responseDelayTimer;
+
     /**
      * 接受客户端发送的模型
      */
     public static void registerModel(ServerPlayer sender, String modelId, JsonObject modelJson, JsonObject configJson, byte[] imageCache, byte[] pbrN, byte[] pbrS) {
-        if(responseDelayTimer > 0){
+        if (responseDelayTimer > 0) {
             sender.displayClientMessage(Component.translatable("tip.efmm.sender_in_cooldown", responseDelayTimer / 20), false);
             return;
         }
         responseDelayTimer = EFMMConfig.MAX_RESPONSE_INTERVAL.get();
-        if(!UPLOAD_WHITE_LIST.contains(sender.getUUID())){
+        if (!UPLOAD_WHITE_LIST.contains(sender.getUUID())) {
             sender.displayClientMessage(Component.translatable("tip.efmm.sender_no_permission"), false);
             LOGGER.info("Sender don't have permission!");
             return;
         }
 
-        if(ALL_MODELS.containsKey(modelId)){
+        if (ALL_MODELS.containsKey(modelId)) {
             sender.displayClientMessage(Component.translatable("tip.efmm.model_already_exist", modelId), false);
             LOGGER.info("Model already exist [{}] in server!", modelId);
             return;
         }
 
         EFMMJsonModelLoader modelLoader = new EFMMJsonModelLoader(modelJson);
-        if(modelLoader.getPositionsCountFromJson() > EFMMConfig.MAX_POSITIONS_COUNT.get()){
-            if(Minecraft.getInstance().player != null){
+        if (modelLoader.getPositionsCountFromJson() > EFMMConfig.MAX_POSITIONS_COUNT.get()) {
+            if (Minecraft.getInstance().player != null) {
                 sender.displayClientMessage(Component.translatable("tip.efmm.model_to_large_server", modelId), false);
             }
             LOGGER.info("Received a too large model [{}] from client! Skipped.", modelId);
@@ -78,7 +85,7 @@ public class ServerModelManager {
         }
 
         Path modelPath = EFMM_CONFIG_PATH.resolve(modelId);
-        try  {
+        try {
             Files.createDirectory(modelPath);
             Path mainJsonPath = modelPath.resolve("main.json");
             Files.writeString(mainJsonPath, GSON.toJson(modelJson));
@@ -86,11 +93,11 @@ public class ServerModelManager {
             Files.writeString(configJsonPath, GSON.toJson(configJson));
             Path texturePath = modelPath.resolve("texture.png");
             Files.write(texturePath, imageCache);
-            if(pbrN.length != 0){
+            if (pbrN.length != 0) {
                 Path textureNPath = modelPath.resolve("texture_n.png");
                 Files.write(textureNPath, pbrN);
             }
-            if(pbrS.length != 0){
+            if (pbrS.length != 0) {
                 Path textureSPath = modelPath.resolve("texture_s.png");
                 Files.write(textureSPath, pbrS);
             }
@@ -118,8 +125,8 @@ public class ServerModelManager {
         if (player instanceof ServerPlayer serverPlayer) {
             PacketRelay.sendToPlayer(PacketHandler.MAIN_CHANNEL, new AuthModelPacket(false, getOrCreateAllowedModelsFor(player).stream().toList()), serverPlayer);
             LOGGER.info("Send all allowed models permission to {}", player.getDisplayName().getString());
-            for(String modelId : ALLOWED_MODELS.get(player.getUUID())){
-                if(!NATIVE_MODELS.contains(modelId)){
+            for (String modelId : ALLOWED_MODELS.get(player.getUUID())) {
+                if (!NATIVE_MODELS.contains(modelId)) {
                     sendModelWithoutCooldown(serverPlayer, modelId);
                 }
             }
@@ -130,7 +137,7 @@ public class ServerModelManager {
         if (player instanceof ServerPlayer serverPlayer) {
             ENTITY_MODEL_MAP.forEach((uuid, modelId) -> {
                 Entity entity = serverPlayer.serverLevel().getEntity(uuid);
-                if(entity != null){
+                if (entity != null) {
                     PacketRelay.sendToPlayer(PacketHandler.MAIN_CHANNEL, new BindModelPacket(entity.getId(), modelId), serverPlayer);
                 }
             });
@@ -155,7 +162,7 @@ public class ServerModelManager {
     }
 
     public static void sendModelTo(ServerPlayer serverPlayer, String modelId) throws IOException {
-        if(responseDelayTimer > 0){
+        if (responseDelayTimer > 0) {
             serverPlayer.displayClientMessage(Component.translatable("tip.efmm.sender_in_cooldown", responseDelayTimer / 20), false);
             return;
         }
@@ -186,11 +193,41 @@ public class ServerModelManager {
         }
     }
 
+    @Nullable
+    public static String getModelFor(Entity entity) {
+        return ENTITY_MODEL_MAP.get(entity.getUUID());
+    }
+
+    /**
+     * 检查玩家物品是否带有默认绑定的模型
+     *
+     * @param serverPlayer 被检查的玩家
+     * @return 若玩家模型一致则返回true
+     */
+    public static boolean checkIsModelCorrectWithItem(ServerPlayer serverPlayer) {
+        Item item = serverPlayer.getMainHandItem().getItem();
+        String modelId = ServerModelManager.AUTO_BIND_ITEM_MAP.get(item);
+        return modelId != null && Objects.equals(modelId, ServerModelManager.getModelFor(serverPlayer));
+    }
+
+    /**
+     * 检查玩家物品是否带有默认绑定的模型，如有则对比当前模型，不一致则替换
+     *
+     * @param serverPlayer 被检查的玩家
+     */
+    public static void checkOrBindModelWithItem(ServerPlayer serverPlayer) {
+        Item item = serverPlayer.getMainHandItem().getItem();
+        String modelId = ServerModelManager.AUTO_BIND_ITEM_MAP.get(item);
+        if (modelId != null && !Objects.equals(modelId, ServerModelManager.getModelFor(serverPlayer))) {
+            ServerModelManager.bindModelSync(serverPlayer, serverPlayer, modelId);
+        }
+    }
+
     public static boolean bindModelFor(Entity entity, String modelId) {
         if (!ALL_MODELS.containsKey(modelId)) {
             return false;
         }
-        if(ENTITY_MODEL_MAP.containsKey(entity.getUUID()) && ENTITY_MODEL_MAP.get(entity.getUUID()).equals(modelId)){
+        if (ENTITY_MODEL_MAP.containsKey(entity.getUUID()) && ENTITY_MODEL_MAP.get(entity.getUUID()).equals(modelId)) {
             return true;
         }
         ENTITY_MODEL_MAP.put(entity.getUUID(), modelId);
@@ -198,13 +235,20 @@ public class ServerModelManager {
     }
 
     public static void bindModelSync(@Nullable ServerPlayer caster, Entity entity, String modelId) {
+        //模型与物品的一致则不处理
+        if (entity instanceof ServerPlayer serverPlayer && checkIsModelCorrectWithItem(serverPlayer)) {
+            if(caster != null){
+                caster.displayClientMessage(entity.getDisplayName().copy().append(Component.translatable("tip.efmm.duplicate_model", getModelFor(serverPlayer))), false);
+            }
+            return;
+        }
         if (bindModelFor(entity, modelId)) {
             PacketRelay.sendToAll(PacketHandler.MAIN_CHANNEL, new BindModelPacket(entity.getId(), modelId));
-            if(caster != null){
+            if (caster != null) {
                 caster.displayClientMessage(Component.translatable("tip.efmm.bind_success", modelId).append(entity.getDisplayName()), false);
             }
         } else {
-            if(caster != null){
+            if (caster != null) {
                 caster.displayClientMessage(Component.translatable("tip.efmm.bind_model_lost", modelId), false);
             }
         }
@@ -213,7 +257,7 @@ public class ServerModelManager {
     public static void removeModelForSync(@Nullable ServerPlayer caster, Entity entity) {
         removeModelFor(entity);
         PacketRelay.sendToAll(PacketHandler.MAIN_CHANNEL, new ResetClientModelPacket(entity.getId()));
-        if(caster != null){
+        if (caster != null) {
             caster.displayClientMessage(Component.translatable("tip.efmm.reset_model").append(entity.getDisplayName()), false);
         }
     }
@@ -243,6 +287,41 @@ public class ServerModelManager {
         }
         ModelConfig config = ALL_MODELS.get(ENTITY_MODEL_MAP.get(entity.getUUID()));
         return new Vec3f(config.scaleX(), config.scaleY(), config.scaleZ());
+    }
+
+    public static void loadAutoBindItemList() {
+        AUTO_BIND_ITEM_MAP.clear();
+        try {
+            if (!Files.exists(AUTO_BIND_ITEM_LIST_PATH)) {
+                Files.createFile(AUTO_BIND_ITEM_LIST_PATH);
+                return;
+            }
+            try (Reader reader = Files.newBufferedReader(AUTO_BIND_ITEM_LIST_PATH)) {
+                Gson gson = new Gson();
+                Map<String, String> rawMap = gson.fromJson(reader, new TypeToken<Map<String, String>>() {
+                }.getType());
+                for (Map.Entry<String, String> entry : rawMap.entrySet()) {
+                    String itemId = entry.getKey();
+                    String modelId = entry.getValue();
+                    if (!ALL_MODELS.containsKey(modelId)) {
+                        LOGGER.error("Illegal model : [{}]", modelId);
+                        return;
+                    }
+                    Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
+                    if (item != null) {
+                        AUTO_BIND_ITEM_MAP.put(item, modelId);
+                        LOGGER.info("Load auto bind item : [{}] -> [{}]", itemId, modelId);
+                    } else {
+                        LOGGER.error("Illegal Item : [{}]", itemId);
+                    }
+                }
+            } catch (IOException e) {
+                LOGGER.error("Failed to load auto bind item list!", e);
+            }
+        } catch (IOException e) {
+            LOGGER.error("Failed to create auto bind item list!", e);
+        }
+
     }
 
     public static void saveUploadWhiteList() {
@@ -303,7 +382,7 @@ public class ServerModelManager {
 
             LOGGER.info("Saved all allowed models to : " + authListsPath);
         } catch (IOException e) {
-            LOGGER.error("Failed to save allowed models!" , e);
+            LOGGER.error("Failed to save allowed models!", e);
         }
 
     }
@@ -311,7 +390,7 @@ public class ServerModelManager {
     public static void loadAllowedModels() {
         try {
             Path authListsPath = EFMM_CONFIG_PATH.resolve("auth_lists.json");
-            if(!Files.exists(authListsPath)){
+            if (!Files.exists(authListsPath)) {
                 return;
             }
             EFMMJsonModelLoader authListLoader = new EFMMJsonModelLoader(authListsPath.toFile());
@@ -338,7 +417,7 @@ public class ServerModelManager {
                 for (JsonElement element : jsonArray) {
                     if (element.isJsonPrimitive()) {
                         String modelId = element.getAsString();
-                        if(!ALL_MODELS.containsKey(modelId)){
+                        if (!ALL_MODELS.containsKey(modelId)) {
                             LOGGER.error("Model [{}] doesn't exist! skipped", modelId);
                             continue;
                         }
@@ -349,7 +428,7 @@ public class ServerModelManager {
                 }
                 ALLOWED_MODELS.put(uuid, models);
             }
-        } catch (FileNotFoundException e){
+        } catch (FileNotFoundException e) {
             LOGGER.error("Failed to load allowed models!", e);
         }
 
@@ -390,8 +469,8 @@ public class ServerModelManager {
         loadAllModels();
     }
 
-    public static void serverTick(){
-        if(responseDelayTimer > 0) {
+    public static void serverTick() {
+        if (responseDelayTimer > 0) {
             responseDelayTimer--;
         }
     }

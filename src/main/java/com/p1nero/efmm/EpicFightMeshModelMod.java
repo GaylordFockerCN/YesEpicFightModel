@@ -8,10 +8,14 @@ import com.p1nero.efmm.efmodel.ClientModelManager;
 import com.p1nero.efmm.efmodel.ServerModelManager;
 import com.p1nero.efmm.efmodel.ModelManager;
 import com.p1nero.efmm.network.PacketHandler;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.Item;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingEquipmentChangeEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
@@ -29,6 +33,7 @@ import org.slf4j.Logger;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 @Mod(EpicFightMeshModelMod.MOD_ID)
@@ -49,6 +54,7 @@ public class EpicFightMeshModelMod {
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
         MinecraftForge.EVENT_BUS.addListener(this::registerCommand);
         MinecraftForge.EVENT_BUS.addListener(this::registerClientCommand);
+        MinecraftForge.EVENT_BUS.addListener(this::onLivingEquipmentChange);
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, EFMMConfig.SPEC);
     }
 
@@ -80,6 +86,7 @@ public class EpicFightMeshModelMod {
         ServerModelManager.loadAllModels();
         ServerModelManager.loadAllowedModels();
         ServerModelManager.loadUploadWhiteList();
+        ServerModelManager.loadAutoBindItemList();
     }
 
     private void onClientTick(TickEvent.ClientTickEvent event) {
@@ -102,6 +109,19 @@ public class EpicFightMeshModelMod {
                 ServerModelManager.bindExistingModelToClient(event.getEntity());
             } catch (IOException e){
                 LOGGER.error("Failed to sync model to client!", e);
+            }
+        }
+    }
+
+    private void onLivingEquipmentChange(LivingEquipmentChangeEvent event){
+        if(ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getTo().getItem()) && !ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getFrom().getItem()) ){
+            if(event.getEntity() instanceof ServerPlayer player){
+                ServerModelManager.checkOrBindModelWithItem(player);
+            }
+        }
+        if(ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getFrom().getItem()) && !ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getTo().getItem()) ){
+            if(event.getEntity() instanceof ServerPlayer player){
+                ServerModelManager.removeModelForSync(player, player);
             }
         }
     }
