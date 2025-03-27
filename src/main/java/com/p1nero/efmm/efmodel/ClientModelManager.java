@@ -1,8 +1,11 @@
 package com.p1nero.efmm.efmodel;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import com.p1nero.efmm.EFMMConfig;
+import com.p1nero.efmm.EpicFightMeshModelMod;
 import com.p1nero.efmm.client.texture.BytesTexture;
 import com.p1nero.efmm.data.EFMMJsonModelLoader;
 import com.p1nero.efmm.data.ModelConfig;
@@ -18,6 +21,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import yesman.epicfight.api.client.model.AnimatedMesh;
@@ -38,12 +44,14 @@ import java.util.stream.Stream;
 import static com.p1nero.efmm.EpicFightMeshModelMod.EFMM_CONFIG_PATH;
 import static com.p1nero.efmm.efmodel.ModelManager.*;
 
+@Mod.EventBusSubscriber(modid = EpicFightMeshModelMod.MOD_ID)
 public class ClientModelManager {
     public static final Set<String> AUTHED_MODELS = new HashSet<>();
     public static final Set<String> MODELS_BLACK_LIST = new HashSet<>();
     public static final Set<String> NATIVE_MODELS = new HashSet<>();
     public static final Map<String, ModelConfig> LOCAL_MODELS = new HashMap<>();
     public static final Map<String, ModelConfig> ALL_MODELS = new HashMap<>();
+    public static final BiMap<String, String> TEXTURE_ID_MAP = HashBiMap.create();
     public static final Map<String, ResourceLocation> TEXTURE_CACHE = new HashMap<>();
     public static final Map<UUID, String> ENTITY_MODEL_MAP = new HashMap<>();
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -150,7 +158,14 @@ public class ClientModelManager {
         if(imageCache.length == 0){
             return;
         }
-        ResourceLocation textureId = new ResourceLocation(TEXTURE_NAMESPACE, INVALID_CHARS_PATTERN.matcher(modelId.toLowerCase(Locale.ROOT)).replaceAll("") + suffix);
+        String texturePath;
+        if(TEXTURE_ID_MAP.containsKey(modelId)){
+            texturePath = TEXTURE_ID_MAP.get(modelId);
+        } else {
+            texturePath = UUID.randomUUID().toString();
+            TEXTURE_ID_MAP.put(modelId, texturePath);
+        }
+        ResourceLocation textureId = new ResourceLocation(TEXTURE_NAMESPACE, INVALID_CHARS_PATTERN.matcher(texturePath.toLowerCase(Locale.ROOT)).replaceAll("") + suffix);
         try {
             BytesTexture bytesTexture = new BytesTexture(imageCache, textureId);
             Minecraft.getInstance().getTextureManager().register(textureId, bytesTexture);
@@ -305,7 +320,8 @@ public class ClientModelManager {
         return TEXTURE_CACHE.get(modelId);
     }
 
-    public static void clientTick() {
+    @SubscribeEvent
+    public static void clientTick(TickEvent.ClientTickEvent event) {
         if (sendTimer > 0) {
             sendTimer--;
         }

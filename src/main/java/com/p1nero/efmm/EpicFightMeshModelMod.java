@@ -8,6 +8,7 @@ import com.p1nero.efmm.efmodel.ClientModelManager;
 import com.p1nero.efmm.efmodel.ServerModelManager;
 import com.p1nero.efmm.efmodel.ModelManager;
 import com.p1nero.efmm.network.PacketHandler;
+import net.minecraft.client.Minecraft;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Item;
@@ -24,6 +25,7 @@ import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -47,14 +49,8 @@ public class EpicFightMeshModelMod {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::onModLoadCompat);
-        MinecraftForge.EVENT_BUS.addListener(this::onClientTick);
-        MinecraftForge.EVENT_BUS.addListener(this::onServerTick);
-        MinecraftForge.EVENT_BUS.addListener(this::onServerStart);
-        MinecraftForge.EVENT_BUS.addListener(this::onServerStop);
-        MinecraftForge.EVENT_BUS.addListener(this::onPlayerLoggedIn);
         MinecraftForge.EVENT_BUS.addListener(this::registerCommand);
         MinecraftForge.EVENT_BUS.addListener(this::registerClientCommand);
-        MinecraftForge.EVENT_BUS.addListener(this::onLivingEquipmentChange);
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, EFMMConfig.SPEC);
     }
 
@@ -72,6 +68,12 @@ public class EpicFightMeshModelMod {
         });
     }
 
+    private void clientSetup(final FMLClientSetupEvent event){
+        event.enqueueWork(()->{
+            Minecraft.getInstance().isSingleplayer();
+        });
+    }
+
     private void onModLoadCompat(final InterModEnqueueEvent event){
         event.enqueueWork(()-> checkModLoad("oculus", () -> OculusCompat::registerPBRLoader));
     }
@@ -79,50 +81,6 @@ public class EpicFightMeshModelMod {
     public static void checkModLoad(String modId, Supplier<Runnable> runnableSupplier) {
         if (ModList.get().isLoaded(modId)) {
             runnableSupplier.get().run();
-        }
-    }
-
-    private void onServerStart(ServerStartedEvent event) {
-        ServerModelManager.loadAllModels();
-        ServerModelManager.loadAllowedModels();
-        ServerModelManager.loadUploadWhiteList();
-        ServerModelManager.loadAutoBindItemList();
-    }
-
-    private void onClientTick(TickEvent.ClientTickEvent event) {
-        ClientModelManager.clientTick();
-    }
-
-    private void onServerTick(TickEvent.ServerTickEvent event) {
-        ServerModelManager.serverTick();
-    }
-
-    private void onServerStop(ServerStoppedEvent event) {
-        ServerModelManager.saveAllowedModels();
-        ServerModelManager.saveUploadWhiteList();
-    }
-
-    private void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event){
-        if(!event.getEntity().level().isClientSide){
-            try {
-                ServerModelManager.authAllAllowedModelToClient(event.getEntity());
-                ServerModelManager.bindExistingModelToClient(event.getEntity());
-            } catch (IOException e){
-                LOGGER.error("Failed to sync model to client!", e);
-            }
-        }
-    }
-
-    private void onLivingEquipmentChange(LivingEquipmentChangeEvent event){
-        if(ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getTo().getItem()) && !ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getFrom().getItem()) ){
-            if(event.getEntity() instanceof ServerPlayer player){
-                ServerModelManager.checkOrBindModelWithItem(player);
-            }
-        }
-        if(ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getFrom().getItem()) && !ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getTo().getItem()) ){
-            if(event.getEntity() instanceof ServerPlayer player){
-                ServerModelManager.removeModelForSync(player, player);
-            }
         }
     }
 

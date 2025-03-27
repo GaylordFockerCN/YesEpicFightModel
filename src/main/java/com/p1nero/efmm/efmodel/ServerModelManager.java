@@ -4,6 +4,7 @@ import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 import com.mojang.logging.LogUtils;
 import com.p1nero.efmm.EFMMConfig;
+import com.p1nero.efmm.EpicFightMeshModelMod;
 import com.p1nero.efmm.data.EFMMJsonModelLoader;
 import com.p1nero.efmm.data.ModelConfig;
 import com.p1nero.efmm.gameasstes.EFMMArmatures;
@@ -19,6 +20,13 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.Item;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingEquipmentChangeEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
+import net.minecraftforge.event.server.ServerStoppedEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
@@ -41,6 +49,7 @@ import java.util.stream.Stream;
 import static com.p1nero.efmm.EpicFightMeshModelMod.EFMM_CONFIG_PATH;
 import static com.p1nero.efmm.efmodel.ModelManager.*;
 
+@Mod.EventBusSubscriber(modid = EpicFightMeshModelMod.MOD_ID)
 public class ServerModelManager {
     public static final Map<UUID, Set<String>> ALLOWED_MODELS = new HashMap<>();
     public static final Set<String> NATIVE_MODELS = new HashSet<>();
@@ -469,9 +478,50 @@ public class ServerModelManager {
         loadAllModels();
     }
 
-    public static void serverTick() {
+    @SubscribeEvent
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (responseDelayTimer > 0) {
             responseDelayTimer--;
+        }
+    }
+
+    @SubscribeEvent
+    private void onServerStart(ServerStartedEvent event) {
+        ServerModelManager.loadAllModels();
+        ServerModelManager.loadAllowedModels();
+        ServerModelManager.loadUploadWhiteList();
+        ServerModelManager.loadAutoBindItemList();
+    }
+
+    @SubscribeEvent
+    public static void onServerStop(ServerStoppedEvent event) {
+        ServerModelManager.saveAllowedModels();
+        ServerModelManager.saveUploadWhiteList();
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event){
+        if(!event.getEntity().level().isClientSide){
+            try {
+                ServerModelManager.authAllAllowedModelToClient(event.getEntity());
+                ServerModelManager.bindExistingModelToClient(event.getEntity());
+            } catch (IOException e){
+                LOGGER.error("Failed to sync model to client!", e);
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLivingEquipmentChange(LivingEquipmentChangeEvent event){
+        if(ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getTo().getItem()) && !ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getFrom().getItem()) ){
+            if(event.getEntity() instanceof ServerPlayer player){
+                ServerModelManager.checkOrBindModelWithItem(player);
+            }
+        }
+        if(ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getFrom().getItem()) && !ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getTo().getItem()) ){
+            if(event.getEntity() instanceof ServerPlayer player){
+                ServerModelManager.removeModelForSync(player, player);
+            }
         }
     }
 
