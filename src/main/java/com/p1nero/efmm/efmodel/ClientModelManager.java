@@ -47,7 +47,7 @@ import static com.p1nero.efmm.efmodel.ModelManager.*;
 @Mod.EventBusSubscriber(modid = EpicFightMeshModelMod.MOD_ID)
 public class ClientModelManager {
     public static final Set<String> AUTHED_MODELS = new HashSet<>();
-    public static final Set<String> MODELS_BLACK_LIST = new HashSet<>();
+    public static final Map<String, Integer> MODELS_BLACK_LIST = new HashMap<>();
     public static final Set<String> NATIVE_MODELS = new HashSet<>();
     public static final Map<String, ModelConfig> LOCAL_MODELS = new HashMap<>();
     public static final Map<String, ModelConfig> ALL_MODELS = new HashMap<>();
@@ -75,6 +75,10 @@ public class ClientModelManager {
      */
     @OnlyIn(Dist.CLIENT)
     public static void loadNativeModels() {
+        if(Minecraft.getInstance().isSingleplayer() && Minecraft.getInstance().player != null){
+            Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.in_single_player"), false);
+            return;
+        }
         LOGGER.info("Loading native models:");
         try (Stream<Path> subDirs = Files.list(EFMM_CONFIG_PATH)) {
             subDirs.filter(Files::isDirectory).forEach(modelFileDir -> {
@@ -129,12 +133,13 @@ public class ClientModelManager {
     public static void registerModelFromServer(String modelId, JsonObject modelJson, JsonObject configJson, byte[] imageCache, byte[] pbrN, byte[] pbrS) {
         EFMMJsonModelLoader modelLoader = new EFMMJsonModelLoader(modelJson);
         HumanoidMesh mesh = modelLoader.loadAnimatedMesh(HumanoidMesh::new);
-        if (modelLoader.getPositionCountAfterLoadMesh() <= EFMMConfig.MAX_POSITIONS_COUNT.get()) {
+        int count = modelLoader.getPositionCountAfterLoadMesh();
+        if (count <= EFMMConfig.MAX_POSITIONS_COUNT.get()) {
             EFMMMeshes.MESHES.put(modelId, mesh);
         } else {
-            MODELS_BLACK_LIST.add(modelId);
+            MODELS_BLACK_LIST.put(modelId, count);
             if (Minecraft.getInstance().player != null) {
-                Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.model_to_large", modelId), false);
+                Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.model_to_large", modelId, count), false);
             }
             LOGGER.info("Received a too large model \"{}\" from server! Skipped.", modelId);
             return;
@@ -203,6 +208,12 @@ public class ClientModelManager {
      * 不管有无都要绑定，无的情况下自己会请求服务端发
      */
     public static void bindModelFor(Entity entity, String modelId) {
+        if(MODELS_BLACK_LIST.containsKey(modelId)){
+            if(Minecraft.getInstance().player != null){
+                Minecraft.getInstance().player.displayClientMessage(Component.translatable("tip.efmm.model_to_large", modelId, MODELS_BLACK_LIST.get(modelId)), false);
+            }
+            return;
+        }
         ENTITY_MODEL_MAP.put(entity.getUUID(), modelId);
     }
 
@@ -303,7 +314,7 @@ public class ClientModelManager {
     }
 
     public static void sendRequestModelPacket(String modelId) {
-        if (!MODELS_BLACK_LIST.contains(modelId) && requestDelayTimer <= 0) {
+        if (!MODELS_BLACK_LIST.containsKey(modelId) && requestDelayTimer <= 0) {
             PacketRelay.sendToServer(PacketHandler.MAIN_CHANNEL, new RequestSyncModelPacket(modelId));
             LOGGER.info("Send sync model [{}] request.", modelId);
             requestDelayTimer = MAX_REQUEST_INTERVAL;

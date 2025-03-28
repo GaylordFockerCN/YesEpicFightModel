@@ -19,8 +19,8 @@
   "tip.efmm.please_select": "请从列表中选择一个模型",
   "tip.efmm.select_ef_model.keyword": "请输入关键字",
   "tip.efmm.select_model_to_upload": "请选择要上传的模型",
-  "tip.efmm.model_to_large": "模型 [%s] 超出限制！请检查配置文件以修改限制大小。",
-  "tip.efmm.model_to_large_server": "模型 [%s] 超出服务器限制！服务器拒绝了您的模型。",
+  "tip.efmm.model_to_large": "模型 [%s] 具有 [%d] 顶点数，超出限制！请检查配置文件以修改限制大小。",
+  "tip.efmm.model_to_large_server": "模型 [%s] 具有 [%d] 顶点数，超出服务器限制！服务器拒绝了您的模型。",
   "tip.efmm.model_already_exist": "服务器已存在模型 [%s] ！",
   "tip.efmm.failed_to_send_model_to_server": "发送失败！错误：",
   "tip.efmm.sender_no_permission": "您无权上传模型！",
@@ -31,5 +31,6 @@
   "tip.efmm.success_send_to_server": "成功在服务器上注册模型 [%s] ！",
   "tip.efmm.does_not_have_ef_patch": " 并不具有史诗战斗属性。",
   "tip.efmm.auto_bind_list_reload": "已重载自动绑定物品列表",
-  "tip.efmm.duplicate_model": " 已存在模型 %s!"
+  "tip.efmm.duplicate_model": " 已存在模型 %s!",
+  "tip.efmm.in_single_player": "您处于单人模式！"
 }

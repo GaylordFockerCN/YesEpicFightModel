@@ -4,22 +4,11 @@ import com.mojang.logging.LogUtils;
 import com.p1nero.efmm.command.EFMMClientCommand;
 import com.p1nero.efmm.command.EFMMCommand;
 import com.p1nero.efmm.compat.OculusCompat;
-import com.p1nero.efmm.efmodel.ClientModelManager;
-import com.p1nero.efmm.efmodel.ServerModelManager;
 import com.p1nero.efmm.efmodel.ModelManager;
 import com.p1nero.efmm.network.PacketHandler;
-import net.minecraft.client.Minecraft;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.item.Item;
 import net.minecraftforge.client.event.RegisterClientCommandsEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.living.LivingEquipmentChangeEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.event.server.ServerStoppedEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
@@ -31,11 +20,11 @@ import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLPaths;
 import org.slf4j.Logger;
+import yesman.epicfight.config.ConfigManager;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Objects;
 import java.util.function.Supplier;
 
 @Mod(EpicFightMeshModelMod.MOD_ID)
@@ -66,12 +55,7 @@ public class EpicFightMeshModelMod {
                 LOGGER.error("Failed to create config path!", e);
             }
         });
-    }
-
-    private void clientSetup(final FMLClientSetupEvent event){
-        event.enqueueWork(()->{
-            Minecraft.getInstance().isSingleplayer();
-        });
+        event.enqueueWork(()-> ConfigManager.INGAME_CONFIG.useAnimationShader.set(true));
     }
 
     private void onModLoadCompat(final InterModEnqueueEvent event){

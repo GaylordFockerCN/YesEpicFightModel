@@ -89,19 +89,29 @@ public class SelectEFModelScreen extends Screen {
             }
         }).pos(10, 10).size(100, 21).build());
         this.addRenderableWidget(Button.builder(Component.translatable("button.efmm.upload_model"),
-                (button) -> Minecraft.getInstance().setScreen(new SelectModelToSendScreen(this,
-                        (modelId) -> {
-                            try {
-                                ClientModelManager.sendModelToServer(modelId);
-                            } catch (IOException e) {
-                                LOGGER.error("failed to send model!", e);
-                                Minecraft.getInstance().setScreen(new MessageScreen<>(I18n.get("tip.efmm.failed_to_send_model_to_server"), e.getLocalizedMessage(), this, (button$2) -> {
-                                    Minecraft.getInstance().setScreen(this);
-                                }, 180, 60));
-                            }
-                        }, (modelId) -> {
+                (button) -> {
+                    if(Minecraft.getInstance().isSingleplayer()){
+                        Minecraft.getInstance().setScreen(new MessageScreen<>("", I18n.get("tip.efmm.in_single_player"), this, (button$2) -> {
+                            Minecraft.getInstance().setScreen(this);
+                        }, 180, 60));
+                    } else {
+                        Minecraft.getInstance().setScreen(new SelectModelToSendScreen(this,
+                                (modelId) -> {
+                                    try {
+                                        ClientModelManager.sendModelToServer(modelId);
+                                    } catch (IOException e) {
+                                        LOGGER.error("failed to send model!", e);
+                                        Minecraft.getInstance().setScreen(new MessageScreen<>(I18n.get("tip.efmm.failed_to_send_model_to_server"), e.getLocalizedMessage(), this, (button$2) -> {
+                                            Minecraft.getInstance().setScreen(this);
+                                        }, 180, 60));
+                                    }
+                                }, (modelId) -> {
 
-                }))).pos(130, 10).size(100, 21).build());
+                        }));
+                    }
+                }
+
+        ).pos(130, 10).size(100, 21).build());
         this.addRenderableWidget(this.texturedModelPreviewer);
         this.addRenderableWidget(this.modelList);
 

@@ -19,8 +19,8 @@
   "tip.efmm.please_select": "Please select a model from the list",
   "tip.efmm.select_ef_model.keyword": "Keyword",
   "tip.efmm.select_model_to_upload": "Choose A Model To Upload",
-  "tip.efmm.model_to_large": "Model [%s] is out of limit! Check config to modify the limitation.",
-  "tip.efmm.model_to_large_server": "Model [%s] is out of this server's limit! Server rejected your model.",
+  "tip.efmm.model_to_large": "Model [%s] with [%d] positions is out of limit! Check config to modify the limitation.",
+  "tip.efmm.model_to_large_server": "Model [%s] with [%d] positions is out of this server's limit! Server rejected your model.",
   "tip.efmm.model_already_exist": "Model [%s] already exist in server!",
   "tip.efmm.failed_to_send_model_to_server": "Failed to send! Error:",
   "tip.efmm.sender_no_permission": "You have no permission to send model!",
@@ -31,5 +31,6 @@
   "tip.efmm.success_send_to_server": "Successfully register new model [%s] in server!",
   "tip.efmm.does_not_have_ef_patch": " doesn't have Epic Fight Patch.",
   "tip.efmm.auto_bind_list_reload": "Reloaded all auto bind item list.",
-  "tip.efmm.duplicate_model": " is already has the model %s!"
+  "tip.efmm.duplicate_model": " is already has the model %s!",
+  "tip.efmm.in_single_player": "You are in Single Player!"
 }

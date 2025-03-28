@@ -125,8 +125,8 @@ public class RegisterModelPacket implements BasePacket {
             serverPlayer.displayClientMessage(Component.translatable("tip.efmm.sender_no_permission"), false);
             LOGGER.info("Sender don't have permission!");
         } else {
-            if(ClientModelManager.MODELS_BLACK_LIST.contains(modelId)){
-                player.displayClientMessage(Component.translatable("tip.efmm.model_to_large", modelId), false);
+            if(ClientModelManager.MODELS_BLACK_LIST.containsKey(modelId)){
+                player.displayClientMessage(Component.translatable("tip.efmm.model_to_large", modelId, ClientModelManager.MODELS_BLACK_LIST.get(modelId)), false);
                 return;
             }
             JsonObject modelJson = parseJson(new String(modelJsonBytes, StandardCharsets.UTF_8));

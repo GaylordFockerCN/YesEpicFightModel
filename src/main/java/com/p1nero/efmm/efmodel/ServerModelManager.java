@@ -14,7 +14,6 @@ import com.p1nero.efmm.network.packet.AuthModelPacket;
 import com.p1nero.efmm.network.packet.BindModelPacket;
 import com.p1nero.efmm.network.packet.RegisterModelPacket;
 import com.p1nero.efmm.network.packet.ResetClientModelPacket;
-import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -85,10 +84,9 @@ public class ServerModelManager {
         }
 
         EFMMJsonModelLoader modelLoader = new EFMMJsonModelLoader(modelJson);
-        if (modelLoader.getPositionsCountFromJson() > EFMMConfig.MAX_POSITIONS_COUNT.get()) {
-            if (Minecraft.getInstance().player != null) {
-                sender.displayClientMessage(Component.translatable("tip.efmm.model_to_large_server", modelId), false);
-            }
+        int positionsCount = modelLoader.getPositionsCountFromJson();
+        if (positionsCount > EFMMConfig.MAX_POSITIONS_COUNT.get()) {
+            sender.displayClientMessage(Component.translatable("tip.efmm.model_to_large_server", modelId, positionsCount), false);
             LOGGER.info("Received a too large model [{}] from client! Skipped.", modelId);
             return;
         }
@@ -303,12 +301,18 @@ public class ServerModelManager {
         try {
             if (!Files.exists(AUTO_BIND_ITEM_LIST_PATH)) {
                 Files.createFile(AUTO_BIND_ITEM_LIST_PATH);
+                try (Writer writer = Files.newBufferedWriter(AUTO_BIND_ITEM_LIST_PATH)) {
+                    writer.write("{\n\"efmm:example\" : \"Anon Chihaya\"\n}");
+                }
                 return;
             }
             try (Reader reader = Files.newBufferedReader(AUTO_BIND_ITEM_LIST_PATH)) {
                 Gson gson = new Gson();
-                Map<String, String> rawMap = gson.fromJson(reader, new TypeToken<Map<String, String>>() {
-                }.getType());
+                Map<String, String> rawMap = gson.fromJson(reader, new TypeToken<Map<String, String>>() {}.getType());
+                if(rawMap == null){
+                    Files.deleteIfExists(AUTO_BIND_ITEM_LIST_PATH);
+                    return;
+                }
                 for (Map.Entry<String, String> entry : rawMap.entrySet()) {
                     String itemId = entry.getKey();
                     String modelId = entry.getValue();
@@ -316,8 +320,9 @@ public class ServerModelManager {
                         LOGGER.error("Illegal model : [{}]", modelId);
                         return;
                     }
-                    Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(itemId));
-                    if (item != null) {
+                    ResourceLocation location = new ResourceLocation(itemId);
+                    if (ForgeRegistries.ITEMS.containsKey(location)) {
+                        Item item = ForgeRegistries.ITEMS.getValue(location);
                         AUTO_BIND_ITEM_MAP.put(item, modelId);
                         LOGGER.info("Load auto bind item : [{}] -> [{}]", itemId, modelId);
                     } else {
@@ -330,7 +335,6 @@ public class ServerModelManager {
         } catch (IOException e) {
             LOGGER.error("Failed to create auto bind item list!", e);
         }
-
     }
 
     public static void saveUploadWhiteList() {
@@ -486,7 +490,7 @@ public class ServerModelManager {
     }
 
     @SubscribeEvent
-    private void onServerStart(ServerStartedEvent event) {
+    public static void onServerStart(ServerStartedEvent event) {
         ServerModelManager.loadAllModels();
         ServerModelManager.loadAllowedModels();
         ServerModelManager.loadUploadWhiteList();
