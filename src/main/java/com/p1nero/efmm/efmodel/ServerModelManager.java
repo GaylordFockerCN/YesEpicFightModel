@@ -262,6 +262,13 @@ public class ServerModelManager {
     }
 
     public static void removeModelForSync(@Nullable ServerPlayer caster, Entity entity) {
+        //模型与物品的一致则不处理
+        if (entity instanceof ServerPlayer serverPlayer && checkIsModelCorrectWithItem(serverPlayer)) {
+            if(caster != null){
+                caster.displayClientMessage(entity.getDisplayName().copy().append(Component.translatable("tip.efmm.duplicate_model", getModelFor(serverPlayer))), false);
+            }
+            return;
+        }
         removeModelFor(entity);
         PacketRelay.sendToAll(PacketHandler.MAIN_CHANNEL, new ResetClientModelPacket(entity.getId()));
         if (caster != null) {
