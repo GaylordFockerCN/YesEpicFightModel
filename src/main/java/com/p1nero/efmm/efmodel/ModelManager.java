@@ -19,12 +19,17 @@ import static com.p1nero.efmm.EpicFightMeshModelMod.EFMM_CONFIG_PATH;
 
 public class ModelManager {
 
-    public static void loadNative() {
+    public static void registerEFMMNativeModelConfig() {
         EFMMArmatures.loadNativeArmatures();
-        loadNativeModelConfig("Anon Chihaya", ServerModelManager.ALL_MODELS, new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
-        loadNativeModelConfig("Anon Chihaya", ClientModelManager.ALL_MODELS, new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
-        ServerModelManager.NATIVE_MODELS.add("Anon Chihaya");
-        ClientModelManager.NATIVE_MODELS.add("Anon Chihaya");
+        registerNativeModelConfig("Anon Chihaya", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
+        registerNativeModelConfig("Nagasaki Soyo", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/soyo"));
+    }
+
+    public static void registerNativeModelConfig(String modelId, ResourceLocation resourceLocation){
+        loadNativeModelConfig(modelId, ServerModelManager.ALL_MODELS, resourceLocation);
+        loadNativeModelConfig(modelId, ClientModelManager.ALL_MODELS, resourceLocation);
+        ServerModelManager.NATIVE_MODELS.add(modelId);
+        ClientModelManager.NATIVE_MODELS.add(modelId);
     }
 
     public static boolean hasNewModel(Entity entity) {

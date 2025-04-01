@@ -30,6 +30,8 @@ public class EFMMMeshes {
     public static void loadNativeMeshes(ModelBuildEvent.MeshBuild event) {
         getOrCreateAnimatedMesh("Anon Chihaya", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"), HumanoidMesh::new);
         ClientModelManager.TEXTURE_CACHE.put("Anon Chihaya", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "textures/entity/anon.png"));
+        getOrCreateAnimatedMesh("Nagasaki Soyo", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/soyo"), HumanoidMesh::new);
+        ClientModelManager.TEXTURE_CACHE.put("Nagasaki Soyo", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "textures/entity/soyo.png"));
     }
     public static <M extends AnimatedMesh> M getOrCreateAnimatedMesh(String modelId, ResourceLocation resourceLocation, Meshes.MeshContructor<AnimatedMesh.AnimatedModelPart, AnimatedVertexBuilder, M> constructor) {
         return (M) MESHES.computeIfAbsent(modelId, (key) -> {

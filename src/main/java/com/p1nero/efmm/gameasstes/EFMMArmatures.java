@@ -16,6 +16,7 @@ public class EFMMArmatures {
 
     public static void loadNativeArmatures(){
         addArmature("Anon Chihaya", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"), HumanoidArmature::new);
+        addArmature("Nagasaki Soyo", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/soyo"), HumanoidArmature::new);
     }
 
     public static void reloadArmatures(){

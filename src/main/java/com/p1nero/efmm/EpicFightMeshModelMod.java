@@ -14,7 +14,6 @@ import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -45,7 +44,7 @@ public class EpicFightMeshModelMod {
 
     private void commonSetup(final FMLCommonSetupEvent event){
         event.enqueueWork(PacketHandler::register);
-        event.enqueueWork(ModelManager::loadNative);//附属作者同样可以用这种方式把模型加入到模组里
+        event.enqueueWork(ModelManager::registerEFMMNativeModelConfig);//附属作者同样可以用这种方式把模型加入到模组里
         event.enqueueWork(()->{
             try {
                 if(!Files.exists(EFMM_CONFIG_PATH)){
