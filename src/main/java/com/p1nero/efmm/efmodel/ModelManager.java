@@ -23,6 +23,7 @@ public class ModelManager {
         EFMMArmatures.loadNativeArmatures();
         registerNativeModelConfig("Anon Chihaya", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/anon"));
         registerNativeModelConfig("Nagasaki Soyo", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/soyo"));
+        registerNativeModelConfig("Vergil", new ResourceLocation(EpicFightMeshModelMod.MOD_ID, "entity/vergil"));
     }
 
     public static void registerNativeModelConfig(String modelId, ResourceLocation resourceLocation){

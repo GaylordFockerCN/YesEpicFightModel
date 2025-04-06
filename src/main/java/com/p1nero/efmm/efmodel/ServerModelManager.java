@@ -38,6 +38,8 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -54,6 +56,7 @@ public class ServerModelManager {
     public static final Set<String> NATIVE_MODELS = new HashSet<>();
     public static final Map<String, ModelConfig> ALL_MODELS = new HashMap<>();
     public static final Map<UUID, String> ENTITY_MODEL_MAP = new HashMap<>();
+    private static final Path ENTITY_MODEL_MAP_PATH = EFMM_CONFIG_PATH.resolve("entity_model_map.json");
     private static final Gson GSON = new GsonBuilder().create();
     private static final Path WHITE_LIST_PATH = EFMM_CONFIG_PATH.resolve("white_list.json");
     public static final Set<UUID> UPLOAD_WHITE_LIST = new HashSet<>();
@@ -244,7 +247,7 @@ public class ServerModelManager {
     public static void bindModelSync(@Nullable ServerPlayer caster, Entity entity, String modelId) {
         //模型与物品的一致则不处理
         if (entity instanceof ServerPlayer serverPlayer && checkIsModelCorrectWithItem(serverPlayer)) {
-            if(caster != null){
+            if (caster != null) {
                 caster.displayClientMessage(entity.getDisplayName().copy().append(Component.translatable("tip.efmm.duplicate_model", getModelFor(serverPlayer))), false);
             }
             return;
@@ -264,7 +267,7 @@ public class ServerModelManager {
     public static void removeModelForSync(@Nullable ServerPlayer caster, Entity entity) {
         //模型与物品的一致则不处理
         if (entity instanceof ServerPlayer serverPlayer && checkIsModelCorrectWithItem(serverPlayer)) {
-            if(caster != null){
+            if (caster != null) {
                 caster.displayClientMessage(entity.getDisplayName().copy().append(Component.translatable("tip.efmm.duplicate_model", getModelFor(serverPlayer))), false);
             }
             return;
@@ -315,8 +318,9 @@ public class ServerModelManager {
             }
             try (Reader reader = Files.newBufferedReader(AUTO_BIND_ITEM_LIST_PATH)) {
                 Gson gson = new Gson();
-                Map<String, String> rawMap = gson.fromJson(reader, new TypeToken<Map<String, String>>() {}.getType());
-                if(rawMap == null){
+                Map<String, String> rawMap = gson.fromJson(reader, new TypeToken<Map<String, String>>() {
+                }.getType());
+                if (rawMap == null) {
                     Files.deleteIfExists(AUTO_BIND_ITEM_LIST_PATH);
                     return;
                 }
@@ -377,6 +381,35 @@ public class ServerModelManager {
             LOGGER.info("Loaded {} UUIDs from whitelist", UPLOAD_WHITE_LIST.size());
         } catch (IOException | JsonParseException e) {
             LOGGER.error("Failed to load upload whitelist", e);
+        }
+    }
+
+    public static void saveEntityModelMap() {
+        try {
+            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            try (Writer writer = Files.newBufferedWriter(ENTITY_MODEL_MAP_PATH, StandardCharsets.UTF_8)) {
+                gson.toJson(ENTITY_MODEL_MAP, writer);
+            }
+        } catch (IOException e) {
+            LOGGER.error("Failed to save entity model map!", e);
+        }
+    }
+
+    public static void loadEntityModelMap() {
+        try {
+            if (Files.exists(ENTITY_MODEL_MAP_PATH)) {
+                Gson gson = new Gson();
+                Type mapType = new TypeToken<Map<UUID, String>>() {
+                }.getType();
+                try (Reader reader = Files.newBufferedReader(ENTITY_MODEL_MAP_PATH, StandardCharsets.UTF_8)) {
+                    Map<UUID, String> loadedMap = gson.fromJson(reader, mapType);
+                    if (loadedMap != null) {
+                        ENTITY_MODEL_MAP.putAll(loadedMap);
+                    }
+                }
+            }
+        } catch (IOException e) {
+            LOGGER.error("Failed to read entity model map!", e);
         }
     }
 
@@ -499,6 +532,7 @@ public class ServerModelManager {
     @SubscribeEvent
     public static void onServerStart(ServerStartedEvent event) {
         ServerModelManager.loadAllModels();
+        ServerModelManager.loadEntityModelMap();
         ServerModelManager.loadAllowedModels();
         ServerModelManager.loadUploadWhiteList();
         ServerModelManager.loadAutoBindItemList();
@@ -508,29 +542,35 @@ public class ServerModelManager {
     public static void onServerStop(ServerStoppedEvent event) {
         ServerModelManager.saveAllowedModels();
         ServerModelManager.saveUploadWhiteList();
+        ServerModelManager.saveEntityModelMap();
     }
 
     @SubscribeEvent
-    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event){
-        if(!event.getEntity().level().isClientSide){
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        if (!event.getEntity().level().isClientSide) {
             try {
                 ServerModelManager.authAllAllowedModelToClient(event.getEntity());
                 ServerModelManager.bindExistingModelToClient(event.getEntity());
-            } catch (IOException e){
+
+                if (event.getEntity().getServer() != null && event.getEntity().getServer().isSingleplayer() && getOrCreateAllowedModelsFor(event.getEntity()).isEmpty()) {
+                    ServerModelManager.authAllModelFor(event.getEntity());
+                }
+
+            } catch (IOException e) {
                 LOGGER.error("Failed to sync model to client!", e);
             }
         }
     }
 
     @SubscribeEvent
-    public static void onLivingEquipmentChange(LivingEquipmentChangeEvent event){
-        if(ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getTo().getItem()) && !ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getFrom().getItem()) ){
-            if(event.getEntity() instanceof ServerPlayer player){
+    public static void onLivingEquipmentChange(LivingEquipmentChangeEvent event) {
+        if (ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getTo().getItem())) {
+            if (event.getEntity() instanceof ServerPlayer player) {
                 ServerModelManager.checkOrBindModelWithItem(player);
             }
         }
-        if(ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getFrom().getItem()) && !ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getTo().getItem()) ){
-            if(event.getEntity() instanceof ServerPlayer player){
+        if (ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getFrom().getItem()) && !ServerModelManager.AUTO_BIND_ITEM_MAP.containsKey(event.getTo().getItem())) {
+            if (event.getEntity() instanceof ServerPlayer player) {
                 ServerModelManager.removeModelForSync(player, player);
             }
         }
