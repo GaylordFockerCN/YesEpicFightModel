@@ -44,6 +44,17 @@ public class ModelManager {
         }
     }
 
+    public static ModelConfig getConfigFor(Entity entity){
+        if(hasNewModel(entity)){
+            if(entity.level().isClientSide){
+                return ClientModelManager.getConfigFor(entity);
+            } else {
+                return ServerModelManager.getConfigFor(entity);
+            }
+        }
+        return ModelConfig.getDefault();
+    }
+
     public static Armature getArmatureFor(Entity entity) {
         if (entity.level().isClientSide) {
             return ClientModelManager.getArmatureFor(entity);

@@ -19,9 +19,12 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.EntityEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.jetbrains.annotations.Nullable;
@@ -34,7 +37,7 @@ import yesman.epicfight.client.mesh.HumanoidMesh;
 import yesman.epicfight.gameasset.Armatures;
 import yesman.epicfight.model.armature.HumanoidArmature;
 import yesman.epicfight.world.capabilities.EpicFightCapabilities;
-import yesman.epicfight.world.capabilities.entitypatch.LivingEntityPatch;
+import yesman.epicfight.world.capabilities.entitypatch.player.PlayerPatch;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -153,6 +156,16 @@ public class ClientModelManager {
         registerTexture(modelId, "_s", pbrS);
         ALL_MODELS.put(modelId, modelConfigLoader.loadModelConfig());
         LOGGER.info("Registered new model \"{}\" from server.", modelId);
+        if(Minecraft.getInstance().level != null){
+            ENTITY_MODEL_MAP.forEach((uuid, s) -> {
+                if(s.equals(modelId)){
+                    Player player = Minecraft.getInstance().level.getPlayerByUUID(uuid);
+                    if(player != null){
+                        player.refreshDimensions();
+                    }
+                }
+            });
+        }
     }
 
     @OnlyIn(Dist.CLIENT)
@@ -217,15 +230,7 @@ public class ClientModelManager {
             return;
         }
         ENTITY_MODEL_MAP.put(entity.getUUID(), modelId);
-        ModelConfig modelConfig = ALL_MODELS.get(modelId);
-        if(modelConfig.getNewDimensions() != null){
-            LivingEntityPatch<?> livingEntityPatch = EpicFightCapabilities.getEntityPatch(entity, LivingEntityPatch.class);
-            if(livingEntityPatch != null){
-                livingEntityPatch.resetSize(modelConfig.getNewDimensions());
-            }
-        } else {
-            entity.refreshDimensions();
-        }
+        entity.refreshDimensions();
     }
 
     public static void removeModelFor(Entity entity) {
@@ -243,6 +248,12 @@ public class ClientModelManager {
     }
 
     public static boolean hasNewModel(Entity entity) {
+        if(entity instanceof Player player){
+            PlayerPatch<?> playerPatch = EpicFightCapabilities.getEntityPatch(player, PlayerPatch.class);
+            if(playerPatch == null || !playerPatch.isBattleMode()){
+                return false;
+            }
+        }
         return ENTITY_MODEL_MAP.containsKey(entity.getUUID());
     }
 
@@ -330,6 +341,17 @@ public class ClientModelManager {
             PacketRelay.sendToServer(PacketHandler.MAIN_CHANNEL, new RequestSyncModelPacket(modelId));
             LOGGER.info("Send sync model [{}] request.", modelId);
             requestDelayTimer = MAX_REQUEST_INTERVAL;
+        }
+    }
+
+    @SuppressWarnings("removal")
+    @SubscribeEvent
+    public static void onEntitySizeChange(EntityEvent.Size event){
+        if(hasNewModel(event.getEntity()) && event.getEntity().level().isClientSide){
+            ModelConfig modelConfig = getConfigFor(event.getEntity());
+            EntityDimensions original = event.getNewSize();
+            EntityDimensions newSize = original.fixed ? EntityDimensions.fixed(original.width * modelConfig.getDimScaleXZ(), original.height * modelConfig.getDimScaleY()) : original.scale(modelConfig.getDimScaleXZ(), modelConfig.getDimScaleY());
+            event.setNewSize(newSize, true);
         }
     }
 

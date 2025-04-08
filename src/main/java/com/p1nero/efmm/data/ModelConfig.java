@@ -1,7 +1,5 @@
 package com.p1nero.efmm.data;
 
-import net.minecraft.world.entity.EntityDimensions;
-
 public class ModelConfig {
     public static final ModelConfig DEFAULT_CONFIG = new ModelConfig();
     protected float scaleX;
@@ -10,7 +8,8 @@ public class ModelConfig {
     protected String authorName;
     protected boolean shouldHideWearable;
     protected boolean shouldHideElytra;
-    protected EntityDimensions newDimensions;
+    protected float dimScaleXZ = 1.0F;
+    protected float dimScaleY = 1.0F;
 
     public ModelConfig() {
         authorName = "Anonymous";
@@ -60,11 +59,17 @@ public class ModelConfig {
         return shouldHideElytra;
     }
 
-    public void setNewDimensions(float x, float z) {
-        newDimensions = EntityDimensions.scalable(x, z);
+    public void setNewDimensions(float xz, float y) {
+        this.dimScaleXZ = xz;
+        this.dimScaleY = y;
     }
 
-    public EntityDimensions getNewDimensions() {
-        return newDimensions;
+    public float getDimScaleXZ() {
+        return dimScaleXZ;
     }
+
+    public float getDimScaleY() {
+        return dimScaleY;
+    }
+
 }

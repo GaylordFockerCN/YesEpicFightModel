@@ -1,8 +1,12 @@
 {
   "author": "小早川希",
-  "scaleX": 0.8,
-  "scaleY": 0.8,
-  "scaleZ": 0.8,
+  "scaleX": 0.7,
+  "scaleY": 0.7,
+  "scaleZ": 0.7,
   "shouldHideWearable": true,
-  "shouldHideElytra": false
+  "shouldHideElytra": false,
+  "dimensions": {
+    "xz": 0.8,
+    "y": 0.93
+  }
 }

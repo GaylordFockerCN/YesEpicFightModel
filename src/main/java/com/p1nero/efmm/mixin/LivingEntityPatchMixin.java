@@ -1,9 +1,14 @@
 package com.p1nero.efmm.mixin;
 
+import com.p1nero.efmm.data.ModelConfig;
 import com.p1nero.efmm.efmodel.ClientModelManager;
 import com.p1nero.efmm.efmodel.ModelManager;
 import com.p1nero.efmm.efmodel.ServerModelManager;
+import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -24,6 +29,27 @@ import yesman.epicfight.world.capabilities.entitypatch.LivingEntityPatch;
 @Mixin(value = LivingEntityPatch.class, remap = false)
 public abstract class LivingEntityPatchMixin<T extends LivingEntity> extends HurtableEntityPatch<T> {
     @Shadow protected Armature armature;
+
+    @Inject(method = "resetSize", at = @At("HEAD"), cancellable = true)
+    private void efmm$resetSize(EntityDimensions size, CallbackInfo ci){
+        ModelConfig config = ModelManager.getConfigFor(this.getOriginal());
+        size = EntityDimensions.scalable(size.width * config.getDimScaleXZ(), size.height * config.getDimScaleY());
+        EntityDimensions entitySize = this.original.dimensions;
+        entitySize = EntityDimensions.scalable(entitySize.width * config.getDimScaleXZ(), entitySize.height * config.getDimScaleY());
+        this.original.dimensions = size;
+        if (size.width < entitySize.width) {
+            double d0 = (double)size.width / 2.0;
+            this.original.setBoundingBox(new AABB(this.original.getX() - d0, this.original.getY(), this.original.getZ() - d0, this.original.getX() + d0, this.original.getY() + (double)size.height, this.original.getZ() + d0));
+        } else {
+            AABB axisalignedbb = this.original.getBoundingBox();
+            this.original.setBoundingBox(new AABB(axisalignedbb.minX, axisalignedbb.minY, axisalignedbb.minZ, axisalignedbb.minX + (double)size.width, axisalignedbb.minY + (double)size.height, axisalignedbb.minZ + (double)size.width));
+            if (size.width > entitySize.width && !this.original.level().isClientSide()) {
+                float f = entitySize.width - size.width;
+                this.original.move(MoverType.SELF, new Vec3(f, 0.0, f));
+            }
+        }
+        ci.cancel();
+    }
 
     @Inject(method = "getArmature", at = @At("HEAD"), cancellable = true)
     private void efmm$getArmature(CallbackInfoReturnable<Armature> cir){

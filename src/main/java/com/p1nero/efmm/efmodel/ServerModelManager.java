@@ -18,8 +18,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.EntityEvent;
 import net.minecraftforge.event.entity.living.LivingEquipmentChangeEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
@@ -34,8 +37,7 @@ import yesman.epicfight.api.utils.math.Vec3f;
 import yesman.epicfight.gameasset.Armatures;
 import yesman.epicfight.model.armature.HumanoidArmature;
 import yesman.epicfight.world.capabilities.EpicFightCapabilities;
-import yesman.epicfight.world.capabilities.entitypatch.EntityPatch;
-import yesman.epicfight.world.capabilities.entitypatch.LivingEntityPatch;
+import yesman.epicfight.world.capabilities.entitypatch.player.PlayerPatch;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -206,6 +208,9 @@ public class ServerModelManager {
         }
     }
 
+    /**
+     * 返回当前实体绑定的模型的名字（id）
+     */
     @Nullable
     public static String getModelFor(Entity entity) {
         return ENTITY_MODEL_MAP.get(entity.getUUID());
@@ -244,15 +249,7 @@ public class ServerModelManager {
             return true;
         }
         ENTITY_MODEL_MAP.put(entity.getUUID(), modelId);
-        ModelConfig modelConfig = ALL_MODELS.get(modelId);
-        if(modelConfig.getNewDimensions() != null){
-            LivingEntityPatch<?> livingEntityPatch = EpicFightCapabilities.getEntityPatch(entity, LivingEntityPatch.class);
-            if(livingEntityPatch != null){
-                livingEntityPatch.resetSize(modelConfig.getNewDimensions());
-            }
-        } else {
-            entity.refreshDimensions();
-        }
+        entity.refreshDimensions();
         return true;
     }
 
@@ -297,6 +294,12 @@ public class ServerModelManager {
     }
 
     public static boolean hasNewModel(Entity entity) {
+        if(entity instanceof Player player){
+            PlayerPatch<?> playerPatch = EpicFightCapabilities.getEntityPatch(player, PlayerPatch.class);
+            if(playerPatch == null || !playerPatch.isBattleMode()){
+                return false;
+            }
+        }
         return ENTITY_MODEL_MAP.containsKey(entity.getUUID());
     }
 
@@ -308,6 +311,18 @@ public class ServerModelManager {
             }
         }
         return Armatures.BIPED;
+    }
+
+
+    public static ModelConfig getConfigFor(Entity entity) {
+        UUID uuid = entity.getUUID();
+        if (ENTITY_MODEL_MAP.containsKey(uuid)) {
+            String modelId = ENTITY_MODEL_MAP.get(uuid);
+            if (ALL_MODELS.containsKey(modelId)) {
+                return ALL_MODELS.get(modelId);
+            }
+        }
+        return ModelConfig.getDefault();
     }
 
     public static Vec3f getScaleFor(Entity entity) {
@@ -535,6 +550,17 @@ public class ServerModelManager {
         loadAllModels();
     }
 
+    @SuppressWarnings("removal")
+    @SubscribeEvent
+    public static void onEntitySizeChange(EntityEvent.Size event){
+        if(hasNewModel(event.getEntity()) && !event.getEntity().level().isClientSide){
+            ModelConfig modelConfig = ALL_MODELS.get(getModelFor(event.getEntity()));
+            EntityDimensions original = event.getNewSize();
+            EntityDimensions newSize = original.fixed ? EntityDimensions.fixed(original.width * modelConfig.getDimScaleXZ(), original.height * modelConfig.getDimScaleY()) : original.scale(modelConfig.getDimScaleXZ(), modelConfig.getDimScaleY());
+            event.setNewSize(newSize, true);
+        }
+    }
+
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (responseDelayTimer > 0) {
@@ -564,7 +590,7 @@ public class ServerModelManager {
             try {
                 ServerModelManager.authAllAllowedModelToClient(event.getEntity());
                 ServerModelManager.bindExistingModelToClient(event.getEntity());
-
+                event.getEntity().refreshDimensions();
                 if (event.getEntity().getServer() != null && event.getEntity().getServer().isSingleplayer()) {
                     ServerModelManager.authAllModelFor(event.getEntity());
                 }
