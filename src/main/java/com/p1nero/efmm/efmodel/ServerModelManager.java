@@ -33,6 +33,9 @@ import yesman.epicfight.api.model.Armature;
 import yesman.epicfight.api.utils.math.Vec3f;
 import yesman.epicfight.gameasset.Armatures;
 import yesman.epicfight.model.armature.HumanoidArmature;
+import yesman.epicfight.world.capabilities.EpicFightCapabilities;
+import yesman.epicfight.world.capabilities.entitypatch.EntityPatch;
+import yesman.epicfight.world.capabilities.entitypatch.LivingEntityPatch;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -241,6 +244,15 @@ public class ServerModelManager {
             return true;
         }
         ENTITY_MODEL_MAP.put(entity.getUUID(), modelId);
+        ModelConfig modelConfig = ALL_MODELS.get(modelId);
+        if(modelConfig.getNewDimensions() != null){
+            LivingEntityPatch<?> livingEntityPatch = EpicFightCapabilities.getEntityPatch(entity, LivingEntityPatch.class);
+            if(livingEntityPatch != null){
+                livingEntityPatch.resetSize(modelConfig.getNewDimensions());
+            }
+        } else {
+            entity.refreshDimensions();
+        }
         return true;
     }
 
@@ -281,6 +293,7 @@ public class ServerModelManager {
 
     public static void removeModelFor(Entity entity) {
         ENTITY_MODEL_MAP.remove(entity.getUUID());
+        entity.refreshDimensions();
     }
 
     public static boolean hasNewModel(Entity entity) {
@@ -552,7 +565,7 @@ public class ServerModelManager {
                 ServerModelManager.authAllAllowedModelToClient(event.getEntity());
                 ServerModelManager.bindExistingModelToClient(event.getEntity());
 
-                if (event.getEntity().getServer() != null && event.getEntity().getServer().isSingleplayer() && getOrCreateAllowedModelsFor(event.getEntity()).isEmpty()) {
+                if (event.getEntity().getServer() != null && event.getEntity().getServer().isSingleplayer()) {
                     ServerModelManager.authAllModelFor(event.getEntity());
                 }
 

@@ -4,5 +4,9 @@
   "scaleY": 0.8,
   "scaleZ": 0.8,
   "shouldHideWearable": true,
-  "shouldHideElytra": false
+  "shouldHideElytra": false,
+  "dimensions": {
+    "xz": 0.6,
+    "y": 1.92
+  }
 }

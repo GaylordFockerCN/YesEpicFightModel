@@ -296,8 +296,14 @@ public class EFMMJsonModelLoader {
         if(this.rootJson.has("shouldHideWearable")){
             modelConfig.setShouldHideWearable(this.rootJson.get("shouldHideWearable").getAsBoolean());
         }
+
         if(this.rootJson.has("shouldHideElytra")){
             modelConfig.setShouldHideElytra(this.rootJson.get("shouldHideElytra").getAsBoolean());
+        }
+
+        if(this.rootJson.has("dimensions")){
+            JsonObject jsonObject = this.rootJson.getAsJsonObject("dimensions");
+            modelConfig.setNewDimensions(jsonObject.get("xz").getAsFloat(), jsonObject.get("y").getAsFloat());
         }
 
         return modelConfig;
