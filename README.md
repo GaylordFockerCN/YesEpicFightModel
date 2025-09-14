@@ -1,6 +1,5 @@
 # Epic Fight Mesh Model Mod
 
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![Minecraft](https://img.shields.io/badge/Minecraft-1.20.1-success)
 
 为史诗战斗模组（Epic Fight Mod）添加动态玩家模型替换功能的扩展模组，支持通过Blender导出的自定义模型实时替换玩家角色。
